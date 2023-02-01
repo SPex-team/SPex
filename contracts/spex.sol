@@ -91,14 +91,14 @@ contract SPEX {
         emit EventCancelList(minerId);
     }
 
-    function buyMiner(string calldata minerId) payable public {
-        ListMiner memory miner = _listMiners[minerId];
-        require(miner.listTime > 0, "Miner not list");
-        require(msg.value==msg.value, "Amount is incorrect");
-        uint256 transactionFee = miner.price * _feeRate / _feeRateUnit;
-        uint256 toSellerAmount = (miner.price * (_feeRateUnit - _feeRate)) / _feeRateUnit;
-        _feeTo.transfer(transactionFee);
-        payable(miner.seller).transfer(toSellerAmount);
+    function buyMiner(string calldata minerId) public {
+        // ListMiner memory miner = _listMiners[minerId];
+        // require(miner.listTime > 0, "Miner not list");
+        // require(msg.value==msg.value, "Amount is incorrect");
+        // uint256 transactionFee = miner.price * _feeRate / _feeRateUnit;
+        // uint256 toSellerAmount = (miner.price * (_feeRateUnit - _feeRate)) / _feeRateUnit;
+        // _feeTo.transfer(transactionFee);
+        // payable(miner.seller).transfer(toSellerAmount);
         delete _listMiners[minerId];
         emit EventBuy(minerId, miner.seller, miner.price, msg.sender);
     }
