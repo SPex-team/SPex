@@ -1,16 +1,12 @@
-# SPex is a decentralized storage provider exchange space on FVM
+![image](./images/what_is_spex.png)
 
-# How it works
-* Sellers change the Owner Address to the SPex smart contract and place sell orders
-* Buyers request to purchase and send funds to SPex smart contract
-* Send payment to Seller after minus the transaction fees
-* SPex smart contract transfers the ownership to buyer
+![image](./images/how_it_works.png)
 
 ### Website
 https://spex.website
 
 ### Docs
-https://docs.spex.website/
+https://docs.spex.website
 
 ### Website Frontend
 https://github.com/SPex-team/spex-front
