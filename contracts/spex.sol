@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
+import "@zondax/filecoin-solidity/contracts/v0.8/MinerAPI.sol";
+import "@zondax/filecoin-solidity/contracts/v0.8/types/MinerTypes.sol";
+
+
 contract SPEX {
 
     event EventMinerInContract(string minerId, address owner);
@@ -92,7 +96,7 @@ contract SPEX {
     }
 
     function buyMiner(string calldata minerId) public {
-        // ListMiner memory miner = _listMiners[minerId];
+        ListMiner memory miner = _listMiners[minerId];
         // require(miner.listTime > 0, "Miner not list");
         // require(msg.value==msg.value, "Amount is incorrect");
         // uint256 transactionFee = miner.price * _feeRate / _feeRateUnit;
@@ -111,4 +115,3 @@ contract SPEX {
         return _listMiners[minerId];
     }
 }
-
