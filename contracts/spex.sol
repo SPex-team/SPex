@@ -7,20 +7,26 @@ import "@zondax/filecoin-solidity/contracts/v0.8/types/MinerTypes.sol";
 import "@zondax/filecoin-solidity/contracts/v0.8/AccountAPI.sol";
 import "@zondax/filecoin-solidity/contracts/v0.8/types/AccountTypes.sol";
 
-
+/// @title SPex is a decentralized storage provider exchange space on FVM
+/// @author Mingming Tang
 contract SPex {
 
     event EventMinerInContract(bytes minerId, address owner);
-    event EventList(bytes minerId, address seller, uint price);
+    event EventList(bytes minerId, address seller, uint256 price);
     event EventCancelList(bytes minerId);
-    event EventBuy(bytes minerId, address seller, uint price, address buyer);
-    event EventChangePrice(bytes minerId, uint newPrice);
+    event EventBuy(bytes minerId, address seller, uint256 price, address buyer);
+    event EventChangePrice(bytes minerId, uint256 newPrice);
     event EventMinerOutContract(bytes minerId, bytes newOwner);
 
+
     struct ListMiner {
+        // the Miner ID(Address)
         bytes id;
+        // the miner seller
         address seller;
-        uint price;
+        // the current price of the miner
+        uint256 price;
+        // the list time
         uint listTime;
     }
 
@@ -40,7 +46,10 @@ contract SPex {
         _feeRate = feeRate;
     }
 
-    function confirmChangeOwnerToSpex(bytes memory minerId, bytes memory sign) public {
+    /// @dev Validate if it’s the true owner of the Miner that sign. If yes, accept the Miner and transfer it into the contract and internally record that the Miner belongs to the current message sender.   
+    /// @param minerId Miner ID
+    /// @param sign Use the old owner adress to sign the content that the miner id already executed the Hex transformation. 
+    function confirmTransferMinerIntoSPex(bytes memory minerId, bytes memory sign) public {
         require(_contractFilecoinAddress.length > 0, "The _contractFilecoinAddress not set");
         require(_contractMiners[minerId]==address(0), "Miner already in contract");
         AccountTypes.AuthenticateMessageParams memory params = AccountTypes.AuthenticateMessageParams({
@@ -54,7 +63,10 @@ contract SPex {
         emit EventMinerInContract(minerId, msg.sender);
     }
 
-    function listMiner(bytes memory minerId, uint price) public {
+    /// @dev Designate Miner & price and list the Miner on sale
+    /// @param minerId Miner ID
+    /// @param price Sale price
+    function listMiner(bytes memory minerId, uint256 price) public {
         require(_contractMiners[minerId]==msg.sender, "You are not owner of miner");
         require(_listMiners[minerId].id.length == 0, "Miner already list");
         address owner = _contractMiners[minerId];
@@ -68,13 +80,19 @@ contract SPex {
         emit EventList(minerId, owner, price);
     }
 
-    function changePrice(bytes memory minerId, uint newPrice) public {
+    /// @dev Edit the price of listed Miner
+    /// @param minerId Miner ID
+    /// @param newPrice New sale price
+    function changePrice(bytes memory minerId, uint256 newPrice) public {
         require(_contractMiners[minerId]==msg.sender, "You are not the owner of miner");
         ListMiner memory miner = _listMiners[minerId];
         miner.price = newPrice;
         emit EventChangePrice(minerId, newPrice);
     }
 
+    /// @dev Set the address that the owner want to transfer out of the contract to the outside ordinary address.
+    /// @param minerId Miner ID
+    /// @param newOwner New owner address
     function transferOwnerOut(bytes memory minerId, bytes memory newOwner) public {
         require(_listMiners[minerId].id.length == 0, "You must cancel list first");
         require(_contractMiners[minerId]==msg.sender, "You are not the owner of miner");
@@ -82,6 +100,8 @@ contract SPex {
         emit EventMinerOutContract(minerId, newOwner);
     }
 
+    /// @dev Cancel the listed on sale Miner order
+    /// @param minerId Miner ID
     function cancelList(bytes memory minerId) public {
         require(_listMiners[minerId].id.length > 0, "Miner not list");
         require(_contractMiners[minerId]==msg.sender, "You are not the owner of miner");
@@ -89,6 +109,8 @@ contract SPex {
         emit EventCancelList(minerId);
     }
 
+    /// @dev Buy the Miner, buyer pay for the price and target the buyer as new owner of the Miner in the contract and transfer the money to seller. 
+    /// @param minerId Miner ID
     function buyMiner(bytes memory minerId) public payable {
         ListMiner memory miner = _listMiners[minerId];
         require(miner.listTime > 0, "Miner not list");
@@ -101,10 +123,14 @@ contract SPex {
         emit EventBuy(minerId, miner.seller, miner.price, msg.sender);
     }
 
+    /// @dev Check owner info of the Miner via Miner ID
+    /// @param minerId Miner ID
     function getOwnerById(bytes memory minerId) view public returns(address) {
         return _contractMiners[minerId];
     }
 
+    /// @dev check owner info of the listed Miner via Miner ID
+    /// @param minerId Miner ID
     function getListMinerById(bytes memory minerId) view public returns(ListMiner memory) {
         return _listMiners[minerId];
     }

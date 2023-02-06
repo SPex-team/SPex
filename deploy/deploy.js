@@ -1,68 +1,31 @@
-require("hardhat-deploy")
-require("hardhat-deploy-ethers")
+// We require the Hardhat Runtime Environment explicitly here. This is optional
+// but useful for running the script in a standalone fashion through `node <script>`.
+//
+// You can also run a script with `npx hardhat run <script>`. If you do that, Hardhat
+// will compile your contracts, add the Hardhat Runtime Environment's members to the
+// global scope, and execute the script.
+const hre = require("hardhat");
 
-const ethers = require("ethers")
-const util = require("util")
-const request = util.promisify(require("request"))
-const { networkConfig } = require("../helper-hardhat-config")
+async function main() {
+  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
+  const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
+  const unlockTime = currentTimestampInSeconds + ONE_YEAR_IN_SECS;
 
-const DEPLOYER_PRIVATE_KEY = network.config.accounts[0]
+  const lockedAmount = hre.ethers.utils.parseEther("1");
 
-function hexToBytes(hex) {
-    for (var bytes = [], c = 0; c < hex.length; c += 2) bytes.push(parseInt(hex.substr(c, 2), 16))
-    return new Uint8Array(bytes)
+  const SPex = await hre.ethers.getContractFactory("SPex");
+  const spex = await SPex.deploy("0x2EBD277C069e7CCAcdDe2cEAD2d9aab549561C2f", "0x2EBD277C069e7CCAcdDe2cEAD2d9aab549561C2f", 50);
+
+  await spex.deployed();
+
+  console.log(
+    `Lock with 1 ETH and unlock timestamp ${unlockTime} deployed to ${spex.address}`
+  );
 }
 
-async function callRpc(method, params) {
-    var options = {
-        method: "POST",
-        url: "https://wallaby.node.glif.io/rpc/v0",
-        // url: "http://localhost:1234/rpc/v0",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            jsonrpc: "2.0",
-            method: method,
-            params: params,
-            id: 1,
-        }),
-    }
-    const res = await request(options)
-    return JSON.parse(res.body).result
-}
-
-const deployer = new ethers.Wallet(DEPLOYER_PRIVATE_KEY)
-
-module.exports = async ({ deployments }) => {
-    const { deploy } = deployments
-
-    const priorityFee = await callRpc("eth_maxPriorityFeePerGas")
-    
-    // Wraps Hardhat's deploy, logging errors to console.
-    const deployLogError = async (title, obj) => {
-        let ret;
-        try {
-            ret = await deploy(title, obj);
-        } catch (error) {
-            console.log(error.toString())
-            process.exit(1)
-        }
-        return ret;
-    }
-
-    console.log("Wallet Ethereum Address:", deployer.address)
-    // const chainId = network.config.chainId
-    // const tokenToBeMinted = networkConfig[chainId]["tokenToBeMinted"]
-
-    console.log("deploying SPex...")
-    await deployLogError("SPex", {
-        from: deployer.address,
-        args: ["0x2EBD277C069e7CCAcdDe2cEAD2d9aab549561C2f", "0x2EBD277C069e7CCAcdDe2cEAD2d9aab549561C2f", 50],
-        // maxPriorityFeePerGas to instruct hardhat to use EIP-1559 tx format
-        maxPriorityFeePerGas: priorityFee,
-        log: true,
-    })
-}
-
-module.exports.tags = ["SPex"]
+// We recommend this pattern to be able to use async/await everywhere
+// and properly handle errors.
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

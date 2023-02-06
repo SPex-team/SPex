@@ -10,10 +10,17 @@ describe("Spex", function () {
   })
 
   it("Should set the right _contractFilecoinAddress", async function () {
-    console.log("1111111")
-    const contractFilecoinAddress = "00da43"
+    const contractFilecoinAddress = "0x00da43"
     await spex.setContractFilecoinAddress(contractFilecoinAddress)
     // assert that the value is correct
     expect(await spex.getContractFilecoinAddress).to.equal(contractFilecoinAddress)
   });
+
+  it("confirmChangeOwnerToSpex", async function () {
+    const minerId = "0x00e807"
+    await spex.getOwnerById(minerId)
+    // assert that the value is correct
+    // expect(await spex.getContractFilecoinAddress).to.equal(contractFilecoinAddress)
+  });
+
 });
