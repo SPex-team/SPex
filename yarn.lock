@@ -1484,10 +1484,10 @@
   resolved "https://registry.npmjs.org/@zondax/filecoin-solidity-mock-api/-/filecoin-solidity-mock-api-0.2.0.tgz"
   integrity sha512-pP3Ge4YctqOdlaM78dOOHF309q8T6cPZLQHVc0Gc1UleJnv9+ak85hfEfY7Crg3RUWhp8fR5IYUBYAoohm18NQ==
 
-"@zondax/filecoin-solidity@^0.2.0-beta.3":
-  version "0.2.0-beta.3"
-  resolved "https://registry.npmmirror.com/@zondax/filecoin-solidity/-/filecoin-solidity-0.2.0-beta.3.tgz#098ce246d744d1e15ef5aa4f80e5aa0ae453a3d8"
-  integrity sha512-eh773u0vPjrpmVs5CJAoLzIPSeOSjm4GquzFI0Kp1RTWLgyPG/5EAZMzUpAhZqnqk3D7T/viL8X2wvOtNih9bw==
+"@zondax/filecoin-solidity@^0.5.0-beta.1":
+  version "0.5.0-beta.1"
+  resolved "https://registry.npmmirror.com/@zondax/filecoin-solidity/-/filecoin-solidity-0.5.0-beta.1.tgz#2c493d7cc088dea5b7a8ed4d9fa5bc43eba42517"
+  integrity sha512-b5ZyqBdh22xAbE0eqpHxSfFQLpq3F10hrF++CJZq5ezve9ib0GE50kcNItnr/XH/ADg35QZEbsNLfsOKSnuNig==
   dependencies:
     "@openzeppelin/contracts" "^4.8.0"
     "@zondax/solidity-bignumber" "^0.1.0"
