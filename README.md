@@ -5,6 +5,9 @@
 ### Website
 https://spex.website
 
+### APP
+https://app.spex.website
+
 ### Docs
 https://docs.spex.website
 
