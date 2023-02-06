@@ -8,7 +8,7 @@ import "@zondax/filecoin-solidity/contracts/v0.8/AccountAPI.sol";
 import "@zondax/filecoin-solidity/contracts/v0.8/types/AccountTypes.sol";
 
 
-contract SPEX {
+contract SPex {
 
     event EventMinerInContract(bytes minerId, address owner);
     event EventList(bytes minerId, address seller, uint price);
