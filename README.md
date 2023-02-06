@@ -59,10 +59,10 @@ function getListMinerById(bytes memory minerId) view public returns(ListMiner me
 
 ### Eevents
 ```solidity
-event EventMinerInContract(string minerId, address owner);
-event EventList(string minerId, address seller, uint price);
-event EventCancelList(string minerId);
-event EventBuy(string minerId, address seller, uint price, address buyer);
-event EventChangePrice(string minerId, uint newPrice);
-event EventMinerOutContract(string minerId, string newOwner);
+event EventMinerInContract(bytes minerId, address owner);
+event EventList(bytes minerId, address seller, uint256 price);
+event EventCancelList(bytes minerId);
+event EventBuy(bytes minerId, address seller, uint256 price, address buyer);
+event EventChangePrice(bytes minerId, uint256 newPrice);
+event EventMinerOutContract(bytes minerId, bytes newOwner);
 ```
