@@ -26,11 +26,18 @@ describe("Spex", function () {
     // expect(await spex.getContractFilecoinAddress).to.equal(contractFilecoinAddress)
   });
 
-
   it("listMiner", async function () {
     // const minerId = "0x00e807"
     const price = ethers.utils.parseUnits("1")
     await spex.listMiner(minerId, price)
+    // assert that the value is correct
+    expect(await spex.getListMinerById(minerId).price).to.equal(price)
+  });
+
+  it("changePrice", async function () {
+    // const minerId = "0x00e807"
+    const price = ethers.utils.parseUnits("2")
+    await spex.changePrice(minerId, price)
     // assert that the value is correct
     expect(await spex.getListMinerById(minerId).price).to.equal(price)
   });
