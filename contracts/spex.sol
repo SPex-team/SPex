@@ -7,6 +7,9 @@ import "@zondax/filecoin-solidity/contracts/v0.8/types/MinerTypes.sol";
 import "@zondax/filecoin-solidity/contracts/v0.8/AccountAPI.sol";
 import "@zondax/filecoin-solidity/contracts/v0.8/types/AccountTypes.sol";
 
+import "./utils/Validation.sol";
+
+
 /// @title SPex is a decentralized storage provider exchange space on FVM
 /// @author Mingming Tang
 contract SPex {
@@ -38,13 +41,22 @@ contract SPex {
     uint256 _feeRate;
     uint256 constant _feeRateUnit = 10000;
     bytes _contractFilecoinAddress;
+    Validation _validation;
 
-    constructor(address manager, address payable feeTo, uint256 feeRate) {
+    constructor(address manager, address payable feeTo, uint256 feeRate, address validationAddr) {
         require(feeRate < _feeRateUnit, "feeRate must less _feeRateUnit");
         _manager = manager;
         _feeTo = feeTo;
         _feeRate = feeRate;
+        _validation = Validation(validationAddr);
+
     }
+
+    // function _verifySignExpiredByMessage(bytes calldata minderId, bytes calldata message) private purn {
+    //     require(message.length > 8, "message is less than 8");
+    //     bytes32 timestampBytes;
+    //     timestampBytes[0] = 2;
+    // }
 
     /// @dev Validate if it’s the true owner of the Miner that sign. If yes, accept the Miner and transfer it into the contract and internally record that the Miner belongs to the current message sender.   
     /// @param minerId Miner ID
@@ -52,12 +64,20 @@ contract SPex {
     function confirmTransferMinerIntoSPex(bytes memory minerId, bytes memory sign) public {
         require(_contractFilecoinAddress.length > 0, "The _contractFilecoinAddress not set");
         require(_contractMiners[minerId]==address(0), "Miner already in contract");
-        AccountTypes.AuthenticateMessageParams memory params = AccountTypes.AuthenticateMessageParams({
-            signature: sign,
-            message: minerId
-        });
+
+        _validation.validateOwner(minerId, sign, msg.sender);
+
+        // AccountTypes.AuthenticateMessageParams memory verifySignParams = AccountTypes.AuthenticateMessageParams({
+        //     signature: sign,
+        //     message: message
+        // });
         bytes memory owner = MinerAPI.getOwner(minerId).owner;
-        AccountAPI.authenticateMessage(owner, params);
+        // AccountAPI.authenticateMessage(owner, verifySignParams);
+
+        bytes memory beneficiary = MinerAPI.getBeneficiary(minerId).active.beneficiary;
+
+        require(keccak256(beneficiary) == keccak256(owner), "Beneficiary is not owner");
+
         MinerAPI.changeOwnerAddress(owner, _contractFilecoinAddress);
         _contractMiners[minerId] = msg.sender;
         emit EventMinerInContract(minerId, msg.sender);
@@ -113,8 +133,8 @@ contract SPex {
     /// @param minerId Miner ID
     function buyMiner(bytes memory minerId) public payable {
         ListMiner memory miner = _listMiners[minerId];
-        require(miner.listTime > 0, "Miner not list");
-        require(msg.value==msg.value, "Amount is incorrect");
+        require(_listMiners[minerId].id.length != 0, "Miner not list");
+        require(msg.value==msg.value, "Incorrent payment amount");
         uint256 transactionFee = miner.price * _feeRate / _feeRateUnit;
         uint256 toSellerAmount = (miner.price * (_feeRateUnit - _feeRate)) / _feeRateUnit;
         _feeTo.transfer(transactionFee);
@@ -162,4 +182,10 @@ contract SPex {
     function getFeeRate() public view returns (uint256) {
         return _feeRate;
     }
+
+    function withdraw(address payable to, uint256 amount) public payable {
+        require(msg.sender == _manager);
+        to.transfer(amount);
+    }
 }
+
