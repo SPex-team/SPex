@@ -7,7 +7,7 @@ import "@zondax/filecoin-solidity/contracts/v0.8/types/MinerTypes.sol";
 import "@zondax/filecoin-solidity/contracts/v0.8/AccountAPI.sol";
 import "@zondax/filecoin-solidity/contracts/v0.8/types/AccountTypes.sol";
 
-import "./utils/Validation.sol";
+import "./utils/Validator.sol";
 
 
 /// @title SPex is a decentralized storage provider exchange space on FVM
@@ -41,15 +41,12 @@ contract SPex {
     uint256 _feeRate;
     uint256 constant _feeRateUnit = 10000;
     bytes _contractFilecoinAddress;
-    Validation _validation;
 
-    constructor(address manager, address payable feeTo, uint256 feeRate, address validationAddr) {
+    constructor(address manager, address payable feeTo, uint256 feeRate) {
         require(feeRate < _feeRateUnit, "feeRate must less _feeRateUnit");
         _manager = manager;
         _feeTo = feeTo;
         _feeRate = feeRate;
-        _validation = Validation(validationAddr);
-
     }
 
     // function _verifySignExpiredByMessage(bytes calldata minderId, bytes calldata message) private purn {
@@ -61,17 +58,18 @@ contract SPex {
     /// @dev Validate if it’s the true owner of the Miner that sign. If yes, accept the Miner and transfer it into the contract and internally record that the Miner belongs to the current message sender.   
     /// @param minerId Miner ID
     /// @param sign Use the old owner adress to sign the content that the miner id already executed the Hex transformation. 
-    function confirmTransferMinerIntoSPex(bytes memory minerId, bytes memory sign) public {
+    function confirmTransferMinerIntoSPex(bytes memory minerId, bytes memory sign, uint64 timestamp) public {
         require(_contractFilecoinAddress.length > 0, "The _contractFilecoinAddress not set");
         require(_contractMiners[minerId]==address(0), "Miner already in contract");
 
-        _validation.validateOwner(minerId, sign, msg.sender);
-
+        // _validation.validateOwner(minerId, sign, msg.sender);
         // AccountTypes.AuthenticateMessageParams memory verifySignParams = AccountTypes.AuthenticateMessageParams({
         //     signature: sign,
         //     message: message
         // });
         bytes memory owner = MinerAPI.getOwner(minerId).owner;
+
+        Validator.validateOwnerSign(sign, minerId, owner, timestamp);
         // AccountAPI.authenticateMessage(owner, verifySignParams);
 
         bytes memory beneficiary = MinerAPI.getBeneficiary(minerId).active.beneficiary;
