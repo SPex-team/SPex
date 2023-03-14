@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity 0.8.17;
 
-import "@zondax/filecoin-solidity/contracts/v0.8/MinerAPI.sol";
 import "@zondax/filecoin-solidity/contracts/v0.8/AccountAPI.sol";
 
 
@@ -10,12 +8,12 @@ library Validator {
 
     function validateOwnerSign(
         bytes memory sign,
-        bytes memory minderId,
-        bytes memory owner,
-        uint64 timestamp
+        CommonTypes.FilActorId minderId,
+        uint64 owner,
+        uint256 timestamp
     ) external {
-        require(timestamp>block.timestamp && timestamp < (block.timestamp + 600), "Sign is expired");
-        bytes memory message = abi.encodePacked(
+        require(timestamp<block.timestamp+60 && timestamp > (block.timestamp - 600), "Sign is expired");
+        bytes memory message = abi.encode(
             "validateOwnerSign",
             minderId,
             owner,
@@ -23,8 +21,9 @@ library Validator {
             getChainId(),
             timestamp
         );
+        CommonTypes.FilActorId ownerActorId = CommonTypes.FilActorId.wrap(owner);
         AccountAPI.authenticateMessage(
-            owner,
+            ownerActorId,
             AccountTypes.AuthenticateMessageParams({
                 signature: sign,
                 message: message
