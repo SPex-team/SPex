@@ -65,19 +65,10 @@ contract SPex {
     /// @param minerId Miner ID
     /// @param sign Use the old owner adress to sign the content that the miner id already executed the Hex transformation. 
     function confirmTransferMinerIntoSPex(CommonTypes.FilActorId minerId, bytes memory sign, uint256 timestamp) public {
-        require(_contractFilecoinAddress.data.length > 0, "The _contractFilecoinAddress not set");
-        require(_contractMiners[minerId]==address(0), "Miner already in contract");
-
-        // _validation.validateOwner(minerId, sign, msg.sender);
-        // AccountTypes.AuthenticateMessageParams memory verifySignParams = AccountTypes.AuthenticateMessageParams({
-        //     signature: sign,
-        //     message: message
-        // });
         CommonTypes.FilAddress memory ownerBytes = MinerAPI.getOwner(minerId).owner;
         uint64 onwerUint64 = PrecompilesAPI.resolveAddress(ownerBytes);
 
         Validator.validateOwnerSign(sign, minerId, onwerUint64, timestamp);
-        // AccountAPI.authenticateMessage(owner, verifySignParams);
 
         CommonTypes.FilAddress memory beneficiary = MinerAPI.getBeneficiary(minerId).active.beneficiary;
 
@@ -94,7 +85,7 @@ contract SPex {
     function listMiner(CommonTypes.FilActorId minerId, uint256 price) public {
         require(_contractMiners[minerId]==msg.sender, "You are not owner of miner");
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_listMiners[minerId].id);
-        require(minerIdUint64 > 0, "Miner already list");
+        require(minerIdUint64 == 0, "Miner already list");
         address owner = _contractMiners[minerId];
         ListMiner memory miner = ListMiner ({
             id: minerId,

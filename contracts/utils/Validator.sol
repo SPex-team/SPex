@@ -12,7 +12,7 @@ library Validator {
         uint64 owner,
         uint256 timestamp
     ) external {
-        require(timestamp<block.timestamp+60 && timestamp > (block.timestamp - 600), "Sign is expired");
+        require(timestamp < (block.timestamp+60) && timestamp > (block.timestamp - 600), "Sign is expired");
         bytes memory message = abi.encode(
             "validateOwnerSign",
             minderId,
