@@ -42,6 +42,7 @@ contract SPex {
     mapping(CommonTypes.FilActorId => address) _contractMiners;
     mapping(CommonTypes.FilActorId => ListMiner) _listMiners;
 
+    CommonTypes.FilActorId[] _miner_id_list;
     address payable _feeTo;
     address _manager;
     uint256 _feeRate;
@@ -55,27 +56,18 @@ contract SPex {
         _feeRate = feeRate;
     }
 
-    // function _verifySignExpiredByMessage(bytes calldata minderId, bytes calldata message) private purn {
-    //     require(message.length > 8, "message is less than 8");
-    //     bytes32 timestampBytes;
-    //     timestampBytes[0] = 2;
-    // }
-
     /// @dev Validate if it’s the true owner of the Miner that sign. If yes, accept the Miner and transfer it into the contract and internally record that the Miner belongs to the current message sender.   
     /// @param minerId Miner ID
     /// @param sign Use the old owner adress to sign the content that the miner id already executed the Hex transformation. 
     function confirmTransferMinerIntoSPex(CommonTypes.FilActorId minerId, bytes memory sign, uint256 timestamp) public {
         CommonTypes.FilAddress memory ownerBytes = MinerAPI.getOwner(minerId).owner;
         uint64 onwerUint64 = PrecompilesAPI.resolveAddress(ownerBytes);
-
         Validator.validateOwnerSign(sign, minerId, onwerUint64, timestamp);
-
         CommonTypes.FilAddress memory beneficiary = MinerAPI.getBeneficiary(minerId).active.beneficiary;
-
         require(keccak256(beneficiary.data) == keccak256(ownerBytes.data), "Beneficiary is not owner");
-
         MinerAPI.changeOwnerAddress(minerId, _contractFilecoinAddress);
         _contractMiners[minerId] = msg.sender;
+        _miner_id_list.push(minerId);
         emit EventMinerInContract(minerId, msg.sender);
     }
 
@@ -102,8 +94,11 @@ contract SPex {
     /// @param newPrice New sale price
     function changePrice(CommonTypes.FilActorId minerId, uint256 newPrice) public {
         require(_contractMiners[minerId]==msg.sender, "You are not the owner of miner");
+        uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_listMiners[minerId].id);
+        require(minerIdUint64 > 0, "Miner not list");
         ListMiner memory miner = _listMiners[minerId];
         miner.price = newPrice;
+        _listMiners[minerId] = miner;
         emit EventChangePrice(minerId, newPrice);
     }
 
@@ -134,7 +129,7 @@ contract SPex {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_listMiners[minerId].id);
         ListMiner memory miner = _listMiners[minerId];
         require(minerIdUint64 > 0, "Miner not list");
-        require(msg.value==msg.value, "Incorrent payment amount");
+        require(msg.value==miner.price, "Incorrent payment amount");
         uint256 transactionFee = miner.price * _feeRate / _feeRateUnit;
         uint256 toSellerAmount = (miner.price * (_feeRateUnit - _feeRate)) / _feeRateUnit;
         _feeTo.transfer(transactionFee);
@@ -187,6 +182,14 @@ contract SPex {
     function withdraw(address payable to, uint256 amount) public payable {
         require(msg.sender == _manager);
         to.transfer(amount);
+    }
+
+    function getMinerIdList() public view returns (CommonTypes.FilActorId[] memory) {
+        return _miner_id_list;
+    }
+
+    function getManager() public view returns (address) {
+        return _manager;
     }
 }
 
