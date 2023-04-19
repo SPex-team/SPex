@@ -110,6 +110,7 @@ contract SPex {
         require(minerIdUint64 == 0, "You must cancel list first");
         require(_contractMiners[minerId]==msg.sender, "You are not the owner of miner");
         MinerAPI.changeOwnerAddress(minerId, newOwner);
+        delete _contractMiners[minerId];
         emit EventMinerOutContract(minerId, newOwner);
     }
 
