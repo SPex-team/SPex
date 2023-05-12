@@ -24,6 +24,13 @@ module.exports = {
         "43ba13d5b141082e8c2e22bc41c84d234b5dd2ff3b6e66b89757f96a33840e40",
       ],
     },
+    mainnet: {
+      chainId: 314,
+      url: "https://filecoin-mainnet.chainstacklabs.com/rpc/v1",
+      accounts: [
+        "ec30c33546ddf1ce381e7a9be187bad34659048c182f1bd756e21d4733bd5998",
+      ],
+    },
   },
   mocha: {
     timeout: 1000000

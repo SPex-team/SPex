@@ -7,11 +7,6 @@
 const hre = require("hardhat");
 
 async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
-  const unlockTime = currentTimestampInSeconds + ONE_YEAR_IN_SECS;
-
-  const lockedAmount = hre.ethers.utils.parseEther("100");
   const LibValidator = await ethers.getContractFactory("Validator");
   const lib = await LibValidator.deploy();
   await lib.deployed();
@@ -21,16 +16,15 @@ async function main() {
 
   const ERC20 = await hre.ethers.getContractFactory("SPex", {
     libraries: {
-      // Validator: lib.address
+      Validator: "0x10E7a66332CD2FF07fb7251C305FB4C343c95c95"
     }
   });
-  // const ERC20 = await hre.ethers.getContractFactory("FeedbackToken");
   const erc20 = await ERC20.deploy("0xa293B3d8EF9F2318F7E316BF448e869e8833ec63", 200);
 
   await erc20.deployed();
 
   console.log(
-    `Lock with 100 ETH and unlock timestamp ${unlockTime} deployed to ${erc20.address}`
+    `deployed to ${erc20.address}`
   );
 }
 

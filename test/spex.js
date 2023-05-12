@@ -6,10 +6,19 @@ const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { BigNumber, BigNumberish } = require("@ethersproject/bignumber");
+const {
+  BN,           // Big Number support
+  constants,    // Common constants, like the zero address and largest integers
+  expectEvent,  // Assertions for emitted events
+  expectRevert, // Assertions for transactions that should fail
+} = require('@openzeppelin/test-helpers');
 
 const INIT_FEE_RATE = 200;
 const INIT_MANAGER = "0xa293B3d8EF9F2318F7E316BF448e869e8833ec63";
 const FEE_RATE_UNIT = 10000;
+
+// const SPex = artifacts.require('SPex');
+
 
 describe("SPex", function () {
   // We define a fixture to reuse the same setup in every test.
@@ -22,8 +31,6 @@ describe("SPex", function () {
 
     // console.log("Library Address--->" + lib.address);
     const [owner, otherAccount] = await ethers.getSigners();
-
-
     const SPex = await hre.ethers.getContractFactory("SPex", {
       libraries: {
         // Validator: lib.address,
@@ -31,10 +38,7 @@ describe("SPex", function () {
     });
     // const ERC20 = await hre.ethers.getContractFactory("FeedbackToken");
     const spex = await SPex.deploy(owner.address, INIT_FEE_RATE);
-
     await spex.deployed();
-
-
     return { spex, owner, otherAccount };
   }
 
@@ -62,54 +66,61 @@ describe("SPex", function () {
 
     it("test confirmTransferMinerIntoSPex", async function () {
       const { spex, owner, otherAccount } = await loadFixture(deploySPex);
-      // const minerId = 1002
-      // const price = 30000
-      // let a = await spex.getOwnerById(minerId)
-      // console.log("a.type", typeof(a), "a", a)
       expect(await spex.getOwnerById(minerId)).to.equal(
         "0x0000000000000000000000000000000000000000"
       );
       let id1 = (await spex.getListMinerById(minerId))[0].toString();
-      // console.log("id.type", typeof(id), "id: ", id)
       expect(id1).to.equal(BigNumber.from("0").toString());
-      timestamp = Math.floor(Date.now() / 1000);
+      let timestamp = Math.floor(Date.now() / 1000);
       await spex.confirmTransferMinerIntoSPex(
         minerId,
         "0x12",
         timestamp,
-        price
       );
 
       let id2 = (await spex.getListMinerById(minerId))[0].toString();
-      expect(id2).to.equal(BigNumber.from(minerId).toString());
-
-      // expect(await spex.getListMinerById(minerId).id).to.equal(minerId)
+      expect(id2).to.equal(BigNumber.from(0).toString());
 
       let seller = (await spex.getListMinerById(minerId))[1];
-      // console.log("seller", typeof(seller), "seller: ", seller)
 
-      console.log(
-        "owner.address",
-        typeof owner.address,
-        "owner.address: ",
-        owner.address
-      );
+      // console.log(
+      //   "owner.address",
+      //   typeof owner.address,
+      //   "owner.address: ",
+      //   owner.address
+      // );
       console.log("seller: ", seller);
-      expect(seller).to.equal(owner.address);
+      expect(seller).to.equal(constants.ZERO_ADDRESS);
 
       let onlinePrice = (await spex.getListMinerById(minerId))[2].toString();
-      expect(onlinePrice).to.equal(BigNumber.from(price).toString());
+      expect(onlinePrice).to.equal(BigNumber.from(0).toString());
+
+      // test timestamp
+      
+      let timestamp2 = timestamp - 1000;
+
+      // await expectRevert(spex.connect(otherAccount).confirmTransferMinerIntoSPex(minerId+1, "0x12", timestamp2), "timestamp is expired")
+      
+      // await expectRevert(spex.connect(otherAccount).confirmTransferMinerIntoSPex(minerId, "0x12", timestamp), "timestamp is expired")
+
+      // await spex.connect(otherAccount).confirmTransferMinerIntoSPex(minerId+1, "0x12", timestamp2)
+      // await spex.confirmTransferMinerIntoSPex(minerId, "0x12", timestamp);
+      // await spex.confirmTransferMinerIntoSPex(minerId+3, "0x12", timestamp);
+
     });
 
     it("test changePrice", async function () {
       const { spex, owner, otherAccount } = await loadFixture(deploySPex);
 
+      let timestamp = Math.floor(Date.now() / 1000);
+
       await spex.confirmTransferMinerIntoSPex(
         minerId,
         "0x12",
         timestamp,
-        price
       );
+
+      await spex.listMiner(minerId, price)
 
       await spex.changePrice(minerId, newPrice);
       let onlinePrice = (await spex.getListMinerById(minerId))[2].toString();
@@ -119,12 +130,16 @@ describe("SPex", function () {
     it("test cancelList", async function () {
       const { spex, owner, otherAccount } = await loadFixture(deploySPex);
 
+      let timestamp = Math.floor(Date.now() / 1000);
+
       await spex.confirmTransferMinerIntoSPex(
         minerId,
         "0x12",
         timestamp,
-        price
       );
+
+      await spex.listMiner(minerId, price)
+
 
       await spex.cancelList(minerId);
       let id1 = (await spex.getListMinerById(minerId))[0].toString();
@@ -134,12 +149,16 @@ describe("SPex", function () {
     it("test listMiner", async function () {
       const { spex, owner, otherAccount } = await loadFixture(deploySPex);
 
+      let timestamp = Math.floor(Date.now() / 1000);
+
       await spex.confirmTransferMinerIntoSPex(
         minerId,
         "0x12",
         timestamp,
-        price
       );
+
+      await spex.listMiner(minerId, price)
+
       await spex.cancelList(minerId);
       await spex.listMiner(minerId, price);
       let onlinePrice = (await spex.getListMinerById(minerId))[2].toString();
@@ -149,23 +168,19 @@ describe("SPex", function () {
     it("test buyMiner", async function () {
       const { spex, owner, otherAccount } = await loadFixture(deploySPex);
 
+      let timestamp = Math.floor(Date.now() / 1000);
+
       await spex.confirmTransferMinerIntoSPex(
         minerId,
         "0x12",
         timestamp,
-        price
       );
-
-      console.log("00000000000");
+      await spex.listMiner(minerId, price)
 
       let provider = ethers.getDefaultProvider();
-      console.log("111111111111111");
-
       // let buyerBalanceBefore = await provider.getBalance(otherAccount.address);
       // let spexBalanceBefore = await provider.getBalance(spex.address);
       // let sellerBalanceBefore = await provider.getBalance(owner.address);
-
-      console.log("22222222222");
 
       let feeRate = await spex.getFeeRate();
 
@@ -197,12 +212,12 @@ describe("SPex", function () {
     it("test changeFee", async function () {
       const { spex, owner, otherAccount } = await loadFixture(deploySPex);
 
-      await spex.confirmTransferMinerIntoSPex(
-        minerId,
-        "0x12",
-        timestamp,
-        price
-      );
+      // await spex.confirmTransferMinerIntoSPex(
+      //   minerId,
+      //   "0x12",
+      //   timestamp,
+      // );
+      // await spex.listMiner(minerId, price)
 
       const newFeeRate = 500;
       await spex.changeFeeRate(newFeeRate);
@@ -213,12 +228,11 @@ describe("SPex", function () {
     it("test changeManager", async function () {
       const { spex, owner, otherAccount } = await loadFixture(deploySPex);
 
-      await spex.confirmTransferMinerIntoSPex(
-        minerId,
-        "0x12",
-        timestamp,
-        price
-      );
+      // await spex.confirmTransferMinerIntoSPex(
+      //   minerId,
+      //   "0x12",
+      //   timestamp,
+      // );
       await spex.changeManager(otherAccount.address);
       expect(await spex.getManager()).to.equal(otherAccount.address);
     });

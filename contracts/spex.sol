@@ -75,15 +75,17 @@ contract SPex {
     /// @param minerId Miner ID
     /// @param sign Use the old owner adress to sign the content that the miner id already executed the Hex transformation. 
     function confirmTransferMinerIntoSPex(CommonTypes.FilActorId minerId, bytes memory sign, uint256 timestamp) public {
+        require(_contractMiners[minerId]==address(0), "Miner already in SPex");
         _validateTimestamp(timestamp);
-        // CommonTypes.FilAddress memory ownerBytes = MinerAPI.getOwner(minerId).owner;
-        // MinerTypes.GetOwnerReturn memory ownerReturn = MinerAPI.getOwner(minerId);
+        CommonTypes.FilAddress memory ownerBytes = MinerAPI.getOwner(minerId).owner;
+        MinerTypes.GetOwnerReturn memory ownerReturn = MinerAPI.getOwner(minerId);
 
-        // uint64 onwerUint64 = PrecompilesAPI.resolveAddress(ownerReturn.owner);
-        // Validator.validateOwnerSign(sign, minerId, onwerUint64, timestamp);
-        // CommonTypes.FilAddress memory beneficiary = MinerAPI.getBeneficiary(minerId).active.beneficiary;
-        // require(keccak256(beneficiary.data) == keccak256(ownerBytes.data), "Beneficiary is not owner");
-        // MinerAPI.changeOwnerAddress(minerId, ownerReturn.proposed);
+        uint64 onwerUint64 = PrecompilesAPI.resolveAddress(ownerReturn.owner);
+        Validator.validateOwnerSign(sign, minerId, onwerUint64, timestamp);
+
+        CommonTypes.FilAddress memory beneficiary = MinerAPI.getBeneficiary(minerId).active.beneficiary;
+        require(keccak256(beneficiary.data) == keccak256(ownerBytes.data), "Beneficiary is not owner");
+        MinerAPI.changeOwnerAddress(minerId, ownerReturn.proposed);
         _contractMiners[minerId] = msg.sender;
         _minerIdList.push(minerId);
         emit EventMinerInContract(minerId, msg.sender);
