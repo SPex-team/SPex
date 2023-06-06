@@ -33,6 +33,7 @@ contract SPex {
         CommonTypes.FilActorId id;
         // the miner seller
         address seller;
+        address buyer;
         // the current price of the miner
         uint256 price;
         // the list time
@@ -77,14 +78,18 @@ contract SPex {
     function confirmTransferMinerIntoSPex(CommonTypes.FilActorId minerId, bytes memory sign, uint256 timestamp) public {
         require(_contractMiners[minerId]==address(0), "Miner already in SPex");
         _validateTimestamp(timestamp);
-        CommonTypes.FilAddress memory ownerBytes = MinerAPI.getOwner(minerId).owner;
         MinerTypes.GetOwnerReturn memory ownerReturn = MinerAPI.getOwner(minerId);
 
         uint64 onwerUint64 = PrecompilesAPI.resolveAddress(ownerReturn.owner);
-        Validator.validateOwnerSign(sign, minerId, onwerUint64, timestamp);
 
-        CommonTypes.FilAddress memory beneficiary = MinerAPI.getBeneficiary(minerId).active.beneficiary;
-        require(keccak256(beneficiary.data) == keccak256(ownerBytes.data), "Beneficiary is not owner");
+        uint64 senderUint64 = PrecompilesAPI.resolveEthAddress(msg.sender);
+        if (senderUint64 != onwerUint64) {
+            Validator.validateOwnerSign(sign, minerId, onwerUint64, timestamp);
+        }
+        MinerTypes.GetBeneficiaryReturn memory beneficiaryReturn = MinerAPI.getBeneficiary(minerId);
+        CommonTypes.FilAddress memory beneficiary = beneficiaryReturn.active.beneficiary;
+        require(keccak256(beneficiary.data) == keccak256(ownerReturn.owner.data), "Beneficiary is not owner");
+        require(keccak256(beneficiaryReturn.proposed.new_beneficiary.data) == keccak256(bytes("")), "Pendding beneficiary is not null");
         MinerAPI.changeOwnerAddress(minerId, ownerReturn.proposed);
         _contractMiners[minerId] = msg.sender;
         _minerIdList.push(minerId);
@@ -94,18 +99,24 @@ contract SPex {
     /// @dev Designate Miner & price and list the Miner on sale
     /// @param minerId Miner ID
     /// @param price Sale price
-    function listMiner(CommonTypes.FilActorId minerId, uint256 price) public onlyMinerOwner(minerId) {
+    function listMiner(CommonTypes.FilActorId minerId, uint256 price, address buyer) public onlyMinerOwner(minerId) {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_listMiners[minerId].id);
         require(minerIdUint64 == 0, "Miner already list");
         address owner = _contractMiners[minerId];
         ListMiner memory miner = ListMiner ({
             id: minerId,
             seller: owner,
+            buyer: buyer,
             price: price,
             listTime: block.timestamp
         });
         _listMiners[minerId] = miner;
         emit EventList(minerId, owner, price);
+    }
+
+    function confirmTransferMinerIntoSPexAndList(CommonTypes.FilActorId minerId, bytes memory sign, uint256 timestamp, uint256 price, address buyer) public {
+        confirmTransferMinerIntoSPex(minerId, sign, timestamp);
+        listMiner(minerId, price, buyer);
     }
 
     /// @dev Edit the price of listed Miner
@@ -145,6 +156,9 @@ contract SPex {
         ListMiner memory miner = _listMiners[minerId];
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(miner.id);
         require(minerIdUint64 > 0, "Miner not list");
+        if (miner.buyer != address(0)){
+            require(miner.buyer == msg.sender, "The miner has been assigned a buyer, you are not assigned");
+        }
         require(msg.value==miner.price, "Incorrent payment amount");
         uint256 toSellerAmount = (miner.price * (FEE_RATE_UNIT - _feeRate)) / FEE_RATE_UNIT;
 
