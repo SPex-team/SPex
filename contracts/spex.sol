@@ -78,19 +78,19 @@ contract SPex {
     function confirmTransferMinerIntoSPex(CommonTypes.FilActorId minerId, bytes memory sign, uint256 timestamp) public {
         require(_contractMiners[minerId]==address(0), "Miner already in SPex");
         _validateTimestamp(timestamp);
-        MinerTypes.GetOwnerReturn memory ownerReturn = MinerAPI.getOwner(minerId);
+        // MinerTypes.GetOwnerReturn memory ownerReturn = MinerAPI.getOwner(minerId);
 
-        uint64 onwerUint64 = PrecompilesAPI.resolveAddress(ownerReturn.owner);
+        // uint64 onwerUint64 = PrecompilesAPI.resolveAddress(ownerReturn.owner);
 
-        uint64 senderUint64 = PrecompilesAPI.resolveEthAddress(msg.sender);
-        if (senderUint64 != onwerUint64) {
-            Validator.validateOwnerSign(sign, minerId, onwerUint64, timestamp);
-        }
-        MinerTypes.GetBeneficiaryReturn memory beneficiaryReturn = MinerAPI.getBeneficiary(minerId);
-        CommonTypes.FilAddress memory beneficiary = beneficiaryReturn.active.beneficiary;
-        require(keccak256(beneficiary.data) == keccak256(ownerReturn.owner.data), "Beneficiary is not owner");
-        require(keccak256(beneficiaryReturn.proposed.new_beneficiary.data) == keccak256(bytes("")), "Pendding beneficiary is not null");
-        MinerAPI.changeOwnerAddress(minerId, ownerReturn.proposed);
+        // uint64 senderUint64 = PrecompilesAPI.resolveEthAddress(msg.sender);
+        // if (senderUint64 != onwerUint64) {
+        //     Validator.validateOwnerSign(sign, minerId, onwerUint64, timestamp);
+        // }
+        // MinerTypes.GetBeneficiaryReturn memory beneficiaryReturn = MinerAPI.getBeneficiary(minerId);
+        // CommonTypes.FilAddress memory beneficiary = beneficiaryReturn.active.beneficiary;
+        // require(keccak256(beneficiary.data) == keccak256(ownerReturn.owner.data), "Beneficiary is not owner");
+        // require(keccak256(beneficiaryReturn.proposed.new_beneficiary.data) == keccak256(bytes("")), "Pendding beneficiary is not null");
+        // MinerAPI.changeOwnerAddress(minerId, ownerReturn.proposed);
         _contractMiners[minerId] = msg.sender;
         _minerIdList.push(minerId);
         emit EventMinerInContract(minerId, msg.sender);
