@@ -80,11 +80,11 @@ contract SPex {
         _validateTimestamp(timestamp);
         MinerTypes.GetOwnerReturn memory ownerReturn = MinerAPI.getOwner(minerId);
 
-        uint64 onwerUint64 = PrecompilesAPI.resolveAddress(ownerReturn.owner);
+        uint64 ownerUint64 = PrecompilesAPI.resolveAddress(ownerReturn.owner);
 
         uint64 senderUint64 = PrecompilesAPI.resolveEthAddress(msg.sender);
-        if (senderUint64 != onwerUint64) {
-            Validator.validateOwnerSign(sign, minerId, onwerUint64, timestamp);
+        if (senderUint64 != ownerUint64) {
+            Validator.validateOwnerSign(sign, minerId, ownerUint64, timestamp);
         }
         MinerTypes.GetBeneficiaryReturn memory beneficiaryReturn = MinerAPI.getBeneficiary(minerId);
         CommonTypes.FilAddress memory beneficiary = beneficiaryReturn.active.beneficiary;
