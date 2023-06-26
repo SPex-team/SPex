@@ -41,7 +41,7 @@ contract SPex {
     }
 
     mapping(CommonTypes.FilActorId => address) _minersDelegators;
-    maaping(CommonTypes.FilActorId => address) _transferOutMinersDelegators;
+    mapping(CommonTypes.FilActorId => address) _transferOutMinersDelegators;
     mapping(CommonTypes.FilActorId => ListMiner) _listMiners;
     mapping(address => uint256) public _lastTimestampMap;
 
@@ -136,13 +136,13 @@ contract SPex {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_listMiners[minerId].id);
         require(minerIdUint64 == 0, "You must cancel list first");
         MinerAPI.changeOwnerAddress(minerId, newOwner);
-        _transferOutMinersDelegators[minderId] = _minersDelegators[minerId];
+        _transferOutMinersDelegators[minerId] = _minersDelegators[minerId];
         delete _minersDelegators[minerId];
         emit EventMinerOutContract(minerId, newOwner);
     }
 
-    function transferOwnerOutAgain(CommonTypes.FilActorId minerId, CommonTypes.FilAddress memory newOwner) external (minerId) {
-        require(_transferOutMinersDelegators[minderId] == msg.sender, "You are not delegator of miner");
+    function transferOwnerOutAgain(CommonTypes.FilActorId minerId, CommonTypes.FilAddress memory newOwner) external {
+        require(_transferOutMinersDelegators[minerId] == msg.sender, "You are not delegator of miner");
         MinerAPI.changeOwnerAddress(minerId, newOwner);
         emit EventMinerOutContract(minerId, newOwner);
     }
@@ -182,12 +182,12 @@ contract SPex {
 
     /// @dev Check owner info of the Miner via Miner ID
     /// @param minerId Miner ID
-    function getDelegatorById(CommonTypes.FilActorId minerId) view external returns(address) {
+    function getMinerDelegator(CommonTypes.FilActorId minerId) view external returns(address) {
         return _minersDelegators[minerId];
     }
 
 
-    function getTransferOutDelegatorById(CommonTypes.FilActorId minerId) view external returns(address) {
+    function getTransferOutMinerDelegator(CommonTypes.FilActorId minerId) view external returns(address) {
         return _transferOutMinersDelegators[minerId];
     }
 
