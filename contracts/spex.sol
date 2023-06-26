@@ -61,6 +61,7 @@ contract SPex {
 
     constructor(address manager, uint256 feeRate) {
         require(feeRate < FEE_RATE_TOTAL, "feeRate must be less than FEE_RATE_TOTAL");
+        require(manager != address(0), "the manager address cannot be set zero address");
         _manager = manager;
         _feeRate = feeRate;
     }
@@ -76,13 +77,13 @@ contract SPex {
     /// @param sign Use the old owner adress to sign the content that the miner id already executed the Hex transformation. 
     function confirmTransferMinerIntoSPex(CommonTypes.FilActorId minerId, bytes memory sign, uint256 timestamp) public {
         require(_minersDelegators[minerId]==address(0), "Miner already in SPex");
-        _validateTimestamp(timestamp);
         MinerTypes.GetOwnerReturn memory ownerReturn = MinerAPI.getOwner(minerId);
 
         uint64 ownerUint64 = PrecompilesAPI.resolveAddress(ownerReturn.owner);
 
         uint64 senderUint64 = PrecompilesAPI.resolveEthAddress(msg.sender);
         if (senderUint64 != ownerUint64) {
+            _validateTimestamp(timestamp);
             Validator.validateOwnerSign(sign, minerId, ownerUint64, timestamp);
         }
         MinerTypes.GetBeneficiaryReturn memory beneficiaryReturn = MinerAPI.getBeneficiary(minerId);
@@ -206,6 +207,7 @@ contract SPex {
     }
     
     function changeManager(address manager) external onlyManager {
+        require(manager != address(0), "the manager address cannot be set zero address");
         _manager = manager;
     }
 
