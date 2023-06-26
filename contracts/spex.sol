@@ -182,8 +182,13 @@ contract SPex {
 
     /// @dev Check owner info of the Miner via Miner ID
     /// @param minerId Miner ID
-    function getOwnerById(CommonTypes.FilActorId minerId) view external returns(address) {
+    function getDelegatorById(CommonTypes.FilActorId minerId) view external returns(address) {
         return _minersDelegators[minerId];
+    }
+
+
+    function getTransferOutDelegatorById(CommonTypes.FilActorId minerId) view external returns(address) {
+        return _transferOutMinersDelegators[minerId];
     }
 
     /// @dev check owner info of the listed Miner via Miner ID
