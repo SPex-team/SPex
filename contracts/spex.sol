@@ -41,6 +41,7 @@ contract SPex {
     }
 
     mapping(CommonTypes.FilActorId => address) _minersDelegators;
+    maaping(CommonTypes.FilActorId => address) _transferOutMinersDelegators;
     mapping(CommonTypes.FilActorId => ListMiner) _listMiners;
     mapping(address => uint256) public _lastTimestampMap;
 
@@ -135,7 +136,14 @@ contract SPex {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_listMiners[minerId].id);
         require(minerIdUint64 == 0, "You must cancel list first");
         MinerAPI.changeOwnerAddress(minerId, newOwner);
+        _transferOutMinersDelegators[minderId] = _minersDelegators[minerId];
         delete _minersDelegators[minerId];
+        emit EventMinerOutContract(minerId, newOwner);
+    }
+
+    function transferOwnerOutAgain(CommonTypes.FilActorId minerId, CommonTypes.FilAddress memory newOwner) external (minerId) {
+        require(_transferOutMinersDelegators[minderId] == msg.sender, "You are not delegator of miner");
+        MinerAPI.changeOwnerAddress(minerId, newOwner);
         emit EventMinerOutContract(minerId, newOwner);
     }
 
