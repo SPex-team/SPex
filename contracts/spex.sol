@@ -77,6 +77,7 @@ contract SPex {
     /// @param sign Use the old owner adress to sign the content that the miner id already executed the Hex transformation. 
     function confirmTransferMinerIntoSPex(CommonTypes.FilActorId minerId, bytes memory sign, uint256 timestamp) public {
         require(_minersDelegators[minerId]==address(0), "Miner already in SPex");
+        delete _transferOutMinersDelegators[minerId];
         MinerTypes.GetOwnerReturn memory ownerReturn = MinerAPI.getOwner(minerId);
 
         uint64 ownerUint64 = PrecompilesAPI.resolveAddress(ownerReturn.owner);
