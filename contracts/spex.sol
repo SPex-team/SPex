@@ -76,7 +76,7 @@ contract SPex {
     /// @param minerId Miner ID
     /// @param sign Use the old owner adress to sign the content that the miner id already executed the Hex transformation. 
     function confirmTransferMinerIntoSPex(CommonTypes.FilActorId minerId, bytes memory sign, uint256 timestamp) public {
-        require(_minersDelegators[minerId]==address(0), "Miner already in SPex");
+        require(_minersDelegators[minerId]==address(0), "The miner already in SPex");
         delete _transferOutMinersDelegators[minerId];
         MinerTypes.GetOwnerReturn memory ownerReturn = MinerAPI.getOwner(minerId);
 
@@ -101,7 +101,7 @@ contract SPex {
     /// @param price Sale price
     function listMiner(CommonTypes.FilActorId minerId, uint256 price, address targetBuyer) public onlyMinerDelegator(minerId) {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_listMiners[minerId].id);
-        require(minerIdUint64 == 0, "Miner already list");
+        require(minerIdUint64 == 0, "The miner already list");
         address owner = _minersDelegators[minerId];
         ListMiner memory miner = ListMiner ({
             id: minerId,
@@ -124,7 +124,7 @@ contract SPex {
     /// @param newPrice New sale price
     function changePrice(CommonTypes.FilActorId minerId, uint256 newPrice) external onlyMinerDelegator(minerId) {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_listMiners[minerId].id);
-        require(minerIdUint64 > 0, "Miner not list");
+        require(minerIdUint64 > 0, "the miner is not list");
         ListMiner storage miner = _listMiners[minerId];
         uint256 prevPrice = miner.price;
         miner.price = newPrice;
@@ -153,7 +153,7 @@ contract SPex {
     /// @param minerId Miner ID
     function cancelList(CommonTypes.FilActorId minerId) external onlyMinerDelegator(minerId) {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_listMiners[minerId].id);
-        require(minerIdUint64 > 0, "Miner not list");
+        require(minerIdUint64 > 0, "The miner not list");
         delete _listMiners[minerId];
         emit EventCancelList(minerId);
     }
@@ -163,7 +163,7 @@ contract SPex {
     function buyMiner(CommonTypes.FilActorId minerId) external payable {
         ListMiner storage miner = _listMiners[minerId];
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(miner.id);
-        require(minerIdUint64 > 0, "Miner not list");
+        require(minerIdUint64 > 0, "The miner not list");
         if (miner.targetBuyer != address(0)){
             require(miner.targetBuyer == msg.sender, "You are not the target buyer");
         }
