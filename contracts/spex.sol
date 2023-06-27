@@ -24,7 +24,7 @@ contract SPex {
     event EventList(CommonTypes.FilActorId minerId, address targerBuyer, uint256 price);
     event EventCancelList(CommonTypes.FilActorId minerId);
     event EventBuy(CommonTypes.FilActorId minerId, address targetBuyer, uint256 price);
-    event EventChangePrice(CommonTypes.FilActorId minerId, uint256 oldPrice, uint256 newPrice);
+    event EventChangePrice(CommonTypes.FilActorId minerId, uint256 prevPrice, uint256 currPrice);
     event EventMinerOutContract(CommonTypes.FilActorId minerId, CommonTypes.FilAddress newOwner);
 
 
@@ -55,7 +55,7 @@ contract SPex {
     }
 
     modifier onlyMinerDelegator(CommonTypes.FilActorId minerId) {
-        require(_minersDelegators[minerId]==msg.sender, "You are not delegator of miner");
+        require(_minersDelegators[minerId]==msg.sender, "You are not the delegator of the miner");
         _;
     }
 
@@ -89,7 +89,7 @@ contract SPex {
         }
         MinerTypes.GetBeneficiaryReturn memory beneficiaryReturn = MinerAPI.getBeneficiary(minerId);
         CommonTypes.FilAddress memory beneficiary = beneficiaryReturn.active.beneficiary;
-        require(keccak256(beneficiary.data) == keccak256(ownerReturn.owner.data), "Beneficiary is not owner");
+        require(keccak256(beneficiary.data) == keccak256(ownerReturn.owner.data), "Beneficiary is not the owner");
         require(keccak256(beneficiaryReturn.proposed.new_beneficiary.data) == keccak256(bytes("")), "Pending beneficiary is not null");
         MinerAPI.changeOwnerAddress(minerId, ownerReturn.proposed);
         _minersDelegators[minerId] = msg.sender;
@@ -126,9 +126,9 @@ contract SPex {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_listMiners[minerId].id);
         require(minerIdUint64 > 0, "Miner not list");
         ListMiner storage miner = _listMiners[minerId];
-        uint256 oldPrice = miner.price;
+        uint256 prevPrice = miner.price;
         miner.price = newPrice;
-        emit EventChangePrice(minerId, oldPrice, newPrice);
+        emit EventChangePrice(minerId, prevPrice, newPrice);
     }
 
     /// @dev Set the address that the owner want to transfer out of the contract to the outside ordinary address.
