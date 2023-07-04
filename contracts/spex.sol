@@ -170,10 +170,12 @@ contract SPex {
         require(msg.value==miner.price, "Incorrect payment amount");
         uint256 toSellerAmount = (miner.price * (FEE_RATE_TOTAL - _feeRate)) / FEE_RATE_TOTAL;
 
+        address seller = miner.seller;
+
         delete _listMiners[minerId];
         _minersDelegators[minerId] = msg.sender;
 
-        payable(miner.seller).transfer(toSellerAmount);
+        payable(seller).transfer(toSellerAmount);
         emit EventBuy(minerId, msg.sender, miner.price);
     }
 
