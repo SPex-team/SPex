@@ -19,7 +19,7 @@ async function main() {
   await spex.deployed();
 
   console.log(
-    `deployed to ${lock.address}`
+    `deployed to ${spex.address}`
   );
 }
 

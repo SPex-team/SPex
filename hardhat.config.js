@@ -38,6 +38,13 @@ module.exports = {
         "ec30c33546ddf1ce381e7a9be187bad34659048c182f1bd756e21d4733bd5998",
       ],
     },
+    local_net: {
+      chainId: 31415926,
+      url: "http://47.89.194.181:12345/rpc/v1",
+      accounts: [
+        "1f9081cf6223447475cfce634c1ad2617cc9526303399f839ced8627247aff7f",
+      ],
+    }
   },
   mocha: {
     timeout: 1000000
