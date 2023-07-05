@@ -47,7 +47,7 @@ contract SPex {
 
     address _manager;
     uint256 _feeRate;
-    uint256 constant public FEE_RATE_TOTAL = 10000;
+    uint256 constant public FEE_RATE_BASE = 10000;
 
     modifier onlyManager {
         require(msg.sender == _manager, "You are not the manager");
@@ -60,15 +60,15 @@ contract SPex {
     }
 
     constructor(address manager, uint256 feeRate) {
-        require(feeRate < FEE_RATE_TOTAL, "feeRate must be less than FEE_RATE_TOTAL");
+        require(feeRate < FEE_RATE_BASE, "feeRate must be less than FEE_RATE_BASE");
         require(manager != address(0), "the manager address cannot be set zero address");
         _manager = manager;
         _feeRate = feeRate;
     }
 
     function _validateTimestamp(uint256 timestamp) internal {
-        require(timestamp < (block.timestamp + 120) && timestamp > (block.timestamp - 1800), "timestamp is expired");
-        require(timestamp > _lastTimestampMap[msg.sender], "timestamp is invalid");
+        require(timestamp < (block.timestamp + 120) && timestamp > (block.timestamp - 1800), "the timestamp is expired");
+        require(timestamp > _lastTimestampMap[msg.sender], "the timestamp is invalid");
         _lastTimestampMap[msg.sender] = timestamp;
     }
 
@@ -76,7 +76,7 @@ contract SPex {
     /// @param minerId Miner ID
     /// @param sign Use the old owner adress to sign the content that the miner id already executed the Hex transformation. 
     function confirmTransferMinerIntoSPex(CommonTypes.FilActorId minerId, bytes memory sign, uint256 timestamp) public {
-        require(_minersDelegators[minerId]==address(0), "The miner already in SPex");
+        require(_minersDelegators[minerId]==address(0), "The miner is already transferred into SPex");
         delete _transferOutMinersDelegators[minerId];
         MinerTypes.GetOwnerReturn memory ownerReturn = MinerAPI.getOwner(minerId);
 
@@ -89,7 +89,7 @@ contract SPex {
         }
         MinerTypes.GetBeneficiaryReturn memory beneficiaryReturn = MinerAPI.getBeneficiary(minerId);
         CommonTypes.FilAddress memory beneficiary = beneficiaryReturn.active.beneficiary;
-        require(keccak256(beneficiary.data) == keccak256(ownerReturn.owner.data), "Beneficiary is not the owner");
+        require(keccak256(beneficiary.data) == keccak256(ownerReturn.owner.data), "Beneficiary address should be the owner");
         require(keccak256(beneficiaryReturn.proposed.new_beneficiary.data) == keccak256(bytes("")), "Pending beneficiary is not null");
         MinerAPI.changeOwnerAddress(minerId, ownerReturn.proposed);
         _minersDelegators[minerId] = msg.sender;
@@ -101,7 +101,7 @@ contract SPex {
     /// @param price Sale price
     function listMiner(CommonTypes.FilActorId minerId, uint256 price, address targetBuyer) public onlyMinerDelegator(minerId) {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_listMiners[minerId].id);
-        require(minerIdUint64 == 0, "The miner already list");
+        require(minerIdUint64 == 0, "The miner is already listed");
         address owner = _minersDelegators[minerId];
         ListMiner memory miner = ListMiner ({
             id: minerId,
@@ -124,7 +124,7 @@ contract SPex {
     /// @param newPrice New sale price
     function changePrice(CommonTypes.FilActorId minerId, uint256 newPrice) external onlyMinerDelegator(minerId) {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_listMiners[minerId].id);
-        require(minerIdUint64 > 0, "the miner is not list");
+        require(minerIdUint64 > 0, "the miner is not listed");
         ListMiner storage miner = _listMiners[minerId];
         uint256 prevPrice = miner.price;
         miner.price = newPrice;
@@ -144,7 +144,7 @@ contract SPex {
     }
 
     function transferOwnerOutAgain(CommonTypes.FilActorId minerId, CommonTypes.FilAddress memory newOwner) external {
-        require(_transferOutMinersDelegators[minerId] == msg.sender, "You are not delegator of miner");
+        require(_transferOutMinersDelegators[minerId] == msg.sender, "You are not the delegator of the miner");
         MinerAPI.changeOwnerAddress(minerId, newOwner);
         emit EventMinerOutContract(minerId, newOwner);
     }
@@ -153,7 +153,7 @@ contract SPex {
     /// @param minerId Miner ID
     function cancelList(CommonTypes.FilActorId minerId) external onlyMinerDelegator(minerId) {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_listMiners[minerId].id);
-        require(minerIdUint64 > 0, "The miner not list");
+        require(minerIdUint64 > 0, "The miner is not listed");
         delete _listMiners[minerId];
         emit EventCancelList(minerId);
     }
@@ -163,12 +163,12 @@ contract SPex {
     function buyMiner(CommonTypes.FilActorId minerId) external payable {
         ListMiner storage miner = _listMiners[minerId];
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(miner.id);
-        require(minerIdUint64 > 0, "The miner not list");
+        require(minerIdUint64 > 0, "The miner is not listed");
         if (miner.targetBuyer != address(0)){
-            require(miner.targetBuyer == msg.sender, "You are not the target buyer");
+            require(miner.targetBuyer == msg.sender, "You are not the targeted buyer");
         }
         require(msg.value==miner.price, "Incorrect payment amount");
-        uint256 toSellerAmount = (miner.price * (FEE_RATE_TOTAL - _feeRate)) / FEE_RATE_TOTAL;
+        uint256 toSellerAmount = (miner.price * (FEE_RATE_BASE - _feeRate)) / FEE_RATE_BASE;
 
         address seller = miner.seller;
 
@@ -180,7 +180,7 @@ contract SPex {
     }
 
     function changeFeeRate(uint256 newFeeRate) external onlyManager {
-        require(newFeeRate < FEE_RATE_TOTAL, "The feeRate must be less than FEE_RATE_TOTAL");
+        require(newFeeRate < FEE_RATE_BASE, "The feeRate must be less than FEE_RATE_BASE");
         _feeRate = newFeeRate;
     }
 
@@ -210,7 +210,7 @@ contract SPex {
     }
     
     function changeManager(address manager) external onlyManager {
-        require(manager != address(0), "the manager address cannot be set zero address");
+        require(manager != address(0), "the manager cannot be set to zero address");
         _manager = manager;
     }
 
