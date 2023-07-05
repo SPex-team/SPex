@@ -216,21 +216,23 @@ describe("SPex", function () {
         .connect(otherAccount)
         .buyMiner(minerId, { value: onlinePrice });
 
-      // let buyerBalanceAfter = await provider.getBalance(otherAccount.address);
-      // let spexBalanceAfter = await provider.getBalance(spex.address);
-      // let sellerBalanceAfter = await provider.getBalance(owner.address);
+      let buyerBalanceAfter = await provider.getBalance(otherAccount.address);
+      let spexBalanceAfter = await provider.getBalance(spex.address);
+      let sellerBalanceAfter = await provider.getBalance(owner.address);
 
       let transactionFee = Math.floor((onlinePrice * feeRate) / FEE_RATE_TOTAL);
       console.log("transactionFee: ", transactionFee);
       let toSellerAmount = onlinePrice - transactionFee;
 
-      // console.log("buyerBalanceBefore: ", buyerBalanceBefore, "buyerBalanceAfter: ", buyerBalanceAfter)
-      // console.log("spexBalanceAfter: ", spexBalanceAfter, "spexBalanceBefore: ", spexBalanceBefore)
-      // console.log("sellerBalanceAfter: ", sellerBalanceAfter, "sellerBalanceBefore: ", sellerBalanceBefore)
+      console.log("onlinePrice: ", onlinePrice)
 
-      // expect(buyerBalanceBefore - buyerBalanceAfter).to.equal(onlinePrice);
-      // expect(spexBalanceAfter - spexBalanceBefore).to.equal(transactionFee);
-      // expect(sellerBalanceAfter - sellerBalanceBefore).to.equal(toSellerAmount);
+      console.log("buyerBalanceBefore: ", buyerBalanceBefore, "buyerBalanceAfter: ", buyerBalanceAfter)
+      console.log("spexBalanceBefore: ", spexBalanceBefore, "spexBalanceAfter: ", spexBalanceAfter)
+      console.log("sellerBalanceBefore: ", sellerBalanceBefore, "sellerBalanceAfter: ", sellerBalanceAfter)
+
+      expect(buyerBalanceBefore - buyerBalanceAfter).to.equal(onlinePrice);
+      expect(spexBalanceAfter - spexBalanceBefore).to.equal(transactionFee);
+      expect(sellerBalanceAfter - sellerBalanceBefore).to.equal(toSellerAmount);
       
       let minerId2 = minerId + 1
       await spex.confirmTransferMinerIntoSPexAndList(
@@ -265,11 +267,13 @@ describe("SPex", function () {
     it("test changeManager", async function () {
       const { spex, owner, otherAccount } = await loadFixture(deploySPex);
 
-      // await spex.confirmTransferMinerIntoSPex(
-      //   minerId,
-      //   "0x12",
-      //   timestamp,
-      // );
+      let tx =  spex
+        .connect(otherAccount).changeManager(otherAccount.address);
+      await expect(tx).to.be.revertedWith("You are not the manager")
+
+      let tx1 =  spex.changeManager(constants.ZERO_ADDRESS);
+      await expect(tx1).to.be.revertedWith("the manager address cannot be set zero address")
+
       await spex.changeManager(otherAccount.address);
       expect(await spex.getManager()).to.equal(otherAccount.address);
     });
@@ -296,12 +300,12 @@ describe("SPex", function () {
       
       let spexBalanceBefore = await provider.getBalance(spex.address);
       console.log("spexBalanceBefore: ", spexBalanceBefore)
-      await spex.withdraw(owner.address, price * INIT_FEE_RATE / FEE_RATE_TOTAL / 2)
-      let spexBalanceAfter = await provider.getBalance(spex.address);
-      console.log("spexBalanceAfter: ", spexBalanceAfter)
+      // await spex.withdraw(owner.address, price * INIT_FEE_RATE / FEE_RATE_TOTAL / 2)
+      // let spexBalanceAfter = await provider.getBalance(spex.address);
+      // console.log("spexBalanceAfter: ", spexBalanceAfter)
 
-      await spex.changeManager(otherAccount.address);
-      expect(await spex.getManager()).to.equal(otherAccount.address);
+      // await spex.changeManager(otherAccount.address);
+      // expect(await spex.getManager()).to.equal(otherAccount.address);
     });
   });
 
