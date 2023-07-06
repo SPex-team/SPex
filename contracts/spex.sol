@@ -45,12 +45,13 @@ contract SPex {
     mapping(CommonTypes.FilActorId => ListMiner) _listMiners;
     mapping(address => uint256) public _lastTimestampMap;
 
-    address _manager;
-    uint256 _feeRate;
+    address _foundation;
+    uint256 constant public FEE_RATE = 100;
     uint256 constant public FEE_RATE_BASE = 10000;
+    uint256 constant public MAX_COMMISSION = 500e18;
 
-    modifier onlyManager {
-        require(msg.sender == _manager, "You are not the manager");
+    modifier onlyFoundation {
+        require(msg.sender == _foundation, "You are not the foundation");
         _;
     }
 
@@ -59,17 +60,15 @@ contract SPex {
         _;
     }
 
-    constructor(address manager, uint256 feeRate) {
-        require(feeRate < FEE_RATE_BASE, "feeRate must be less than FEE_RATE_BASE");
-        require(manager != address(0), "the manager address cannot be set zero address");
+    constructor(address foundation) {
+        require(foundation != address(0), "The foundation address cannot be set zero address");
 
-        _manager = manager;
-        _feeRate = feeRate;
+        _foundation = foundation;
     }
 
     function _validateTimestamp(uint256 timestamp) internal {
-        require(timestamp < (block.timestamp + 120) && timestamp > (block.timestamp - 1800), "the timestamp is expired");
-        require(timestamp > _lastTimestampMap[msg.sender], "the timestamp is invalid");
+        require(timestamp < (block.timestamp + 120) && timestamp > (block.timestamp - 1800), "The timestamp is expired");
+        require(timestamp > _lastTimestampMap[msg.sender], "The timestamp is invalid");
         _lastTimestampMap[msg.sender] = timestamp;
     }
 
@@ -125,7 +124,7 @@ contract SPex {
     /// @param newPrice New sale price
     function changePrice(CommonTypes.FilActorId minerId, uint256 newPrice) external onlyMinerDelegator(minerId) {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_listMiners[minerId].id);
-        require(minerIdUint64 > 0, "the miner is not listed");
+        require(minerIdUint64 > 0, "The miner is not listed");
         ListMiner storage miner = _listMiners[minerId];
         uint256 prevPrice = miner.price;
         miner.price = newPrice;
@@ -165,24 +164,24 @@ contract SPex {
         ListMiner storage miner = _listMiners[minerId];
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(miner.id);
         require(minerIdUint64 > 0, "The miner is not listed");
+        require(msg.sender != miner.seller, "You can not buy your own miner");
         if (miner.targetBuyer != address(0)){
             require(miner.targetBuyer == msg.sender, "You are not the targeted buyer");
         }
-        require(msg.value==miner.price, "Incorrect payment amount");
-        uint256 toSellerAmount = (miner.price * (FEE_RATE_BASE - _feeRate)) / FEE_RATE_BASE;
+        require(msg.value == miner.price, "Incorrect payment amount");
+
+        uint256 commissionAmount = miner.price * FEE_RATE / FEE_RATE_BASE;
+        if (commissionAmount >  MAX_COMMISSION) {
+            commissionAmount = MAX_COMMISSION;
+        }
+        uint256 toSellerAmount = miner.price - commissionAmount;
 
         address seller = miner.seller;
-
         delete _listMiners[minerId];
         _minersDelegators[minerId] = msg.sender;
 
         payable(seller).transfer(toSellerAmount);
         emit EventBuy(minerId, msg.sender, miner.price);
-    }
-
-    function changeFeeRate(uint256 newFeeRate) external onlyManager {
-        require(newFeeRate < FEE_RATE_BASE, "The feeRate must be less than FEE_RATE_BASE");
-        _feeRate = newFeeRate;
     }
 
     /// @dev Check owner info of the Miner via Miner ID
@@ -202,21 +201,17 @@ contract SPex {
         return _listMiners[minerId];
     }
 
-    function withdraw(address payable to, uint256 amount) external payable onlyManager {
+    function withdraw(address payable to, uint256 amount) external payable onlyFoundation {
         to.transfer(amount);
     }
 
-    function getManager() external view returns (address) {
-        return _manager;
+    function getFoundation() external view returns (address) {
+        return _foundation;
     }
     
-    function changeManager(address manager) external onlyManager {
-        require(manager != address(0), "the manager cannot be set to zero address");
-        _manager = manager;
-    }
-
-    function getFeeRate() external view returns (uint256) {
-        return _feeRate;
+    function changeFoundation(address foundation) external onlyFoundation {
+        require(foundation != address(0), "The foundation cannot be set to zero address");
+        _foundation = foundation;
     }
 }
 
