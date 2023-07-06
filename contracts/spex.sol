@@ -62,6 +62,7 @@ contract SPex {
     constructor(address manager, uint256 feeRate) {
         require(feeRate < FEE_RATE_BASE, "feeRate must be less than FEE_RATE_BASE");
         require(manager != address(0), "the manager address cannot be set zero address");
+
         _manager = manager;
         _feeRate = feeRate;
     }
