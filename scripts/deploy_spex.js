@@ -9,22 +9,19 @@ const hre = require("hardhat");
 async function main() {
   const LibValidator = await ethers.getContractFactory("Validator");
   const lib = await LibValidator.deploy();
-  await lib.deployed();
 
-  console.log("Library Address--->" + lib.address)
+  console.log("Library Address--->" + lib.target)
 
 
-  const ERC20 = await hre.ethers.getContractFactory("SPex", {
+  const SPex = await hre.ethers.getContractFactory("SPex", {
     libraries: {
-      Validator: "0x10E7a66332CD2FF07fb7251C305FB4C343c95c95"
+      Validator: lib.target
     }
   });
-  const erc20 = await ERC20.deploy("0xa293B3d8EF9F2318F7E316BF448e869e8833ec63", 200);
-
-  await erc20.deployed();
+  const spex = await SPex.deploy("0xad252C0b07c0dCC40137E305Af5f67739AE2A656");
 
   console.log(
-    `deployed to ${erc20.address}`
+    `deployed to ${spex.target}`
   );
 }
 
