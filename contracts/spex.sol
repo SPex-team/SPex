@@ -78,20 +78,22 @@ contract SPex {
     function confirmTransferMinerIntoSPex(CommonTypes.FilActorId minerId, bytes memory sign, uint256 timestamp) public {
         require(_minersDelegators[minerId]==address(0), "The miner is already transferred into SPex");
         delete _transferOutMinersDelegators[minerId];
-        MinerTypes.GetOwnerReturn memory ownerReturn = MinerAPI.getOwner(minerId);
+        _validateTimestamp(timestamp);
 
-        uint64 ownerUint64 = PrecompilesAPI.resolveAddress(ownerReturn.owner);
+        // MinerTypes.GetOwnerReturn memory ownerReturn = MinerAPI.getOwner(minerId);
 
-        uint64 senderUint64 = PrecompilesAPI.resolveEthAddress(msg.sender);
-        if (senderUint64 != ownerUint64) {
-            _validateTimestamp(timestamp);
-            Validator.validateOwnerSign(sign, minerId, ownerUint64, timestamp);
-        }
-        MinerTypes.GetBeneficiaryReturn memory beneficiaryReturn = MinerAPI.getBeneficiary(minerId);
-        CommonTypes.FilAddress memory beneficiary = beneficiaryReturn.active.beneficiary;
-        require(keccak256(beneficiary.data) == keccak256(ownerReturn.owner.data), "Beneficiary address should be the owner");
-        require(keccak256(beneficiaryReturn.proposed.new_beneficiary.data) == keccak256(bytes("")), "Pending beneficiary is not null");
-        MinerAPI.changeOwnerAddress(minerId, ownerReturn.proposed);
+        // uint64 ownerUint64 = PrecompilesAPI.resolveAddress(ownerReturn.owner);
+
+        // uint64 senderUint64 = PrecompilesAPI.resolveEthAddress(msg.sender);
+        // if (senderUint64 != ownerUint64) {
+        //     _validateTimestamp(timestamp);
+        //     Validator.validateOwnerSign(sign, minerId, ownerUint64, timestamp);
+        // }
+        // MinerTypes.GetBeneficiaryReturn memory beneficiaryReturn = MinerAPI.getBeneficiary(minerId);
+        // CommonTypes.FilAddress memory beneficiary = beneficiaryReturn.active.beneficiary;
+        // require(keccak256(beneficiary.data) == keccak256(ownerReturn.owner.data), "Beneficiary address should be the owner");
+        // require(keccak256(beneficiaryReturn.proposed.new_beneficiary.data) == keccak256(bytes("")), "Pending beneficiary is not null");
+        // MinerAPI.changeOwnerAddress(minerId, ownerReturn.proposed);
         _minersDelegators[minerId] = msg.sender;
         emit EventMinerInContract(minerId, msg.sender);
     }
@@ -137,7 +139,7 @@ contract SPex {
     function transferOwnerOut(CommonTypes.FilActorId minerId, CommonTypes.FilAddress memory newOwner) external onlyMinerDelegator(minerId) {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_listMiners[minerId].id);
         require(minerIdUint64 == 0, "You must cancel list first");
-        MinerAPI.changeOwnerAddress(minerId, newOwner);
+        // MinerAPI.changeOwnerAddress(minerId, newOwner);
         _transferOutMinersDelegators[minerId] = _minersDelegators[minerId];
         delete _minersDelegators[minerId];
         emit EventMinerOutContract(minerId, newOwner);
@@ -145,7 +147,7 @@ contract SPex {
 
     function transferOwnerOutAgain(CommonTypes.FilActorId minerId, CommonTypes.FilAddress memory newOwner) external {
         require(_transferOutMinersDelegators[minerId] == msg.sender, "You are not the delegator of the miner");
-        MinerAPI.changeOwnerAddress(minerId, newOwner);
+        // MinerAPI.changeOwnerAddress(minerId, newOwner);
         emit EventMinerOutContract(minerId, newOwner);
     }
 
