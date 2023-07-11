@@ -11,7 +11,7 @@ library Validator {
         CommonTypes.FilActorId minderId,
         uint64 owner,
         uint256 timestamp
-    ) external {
+    ) internal {
         bytes memory message = abi.encode(
             "validateOwnerSign",
             minderId,
