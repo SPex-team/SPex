@@ -26,7 +26,9 @@ import "./utils/Validator.sol";
 /// @author Mingming Tang
 contract SPexBeneficiary {
 
-    event EventMortgageBeneficiaryToSpex(CommonTypes.FilActorId, address, uint, uint, address);
+    event EventPledgeBeneficiaryToSpex(CommonTypes.FilActorId, address, uint, uint, address);
+    event EventReleaseBeneficiary(CommonTypes.FilActorId, CommonTypes.FilAddress);
+    event EventReleaseBeneficiaryAgain(CommonTypes.FilActorId, CommonTypes.FilAddress);
     event EventBuyMinerDebt(address, CommonTypes.FilActorId, uint);
     event EventChangeMinerMaxDebtRate(CommonTypes.FilActorId, uint);
     event EventChangeLoanDayRate(CommonTypes.FilActorId, uint);
@@ -58,35 +60,35 @@ contract SPexBeneficiary {
         uint price;
     }
 
-    mapping(CommonTypes.FilActorId => Miner) _miners;
-    mapping(address => mapping(CommonTypes.FilActorId => Loan)) _loans;
-    mapping(address => mapping(CommonTypes.FilActorId => SellItem)) _sell;
-    mapping(CommonTypes.FilActorId => address) _transferOutMinersDelegators;
+    mapping(CommonTypes.FilActorId => Miner) public _miners;
+    mapping(address => mapping(CommonTypes.FilActorId => Loan)) public  _loans;
+    mapping(address => mapping(CommonTypes.FilActorId => SellItem)) public _sell;
+    mapping(CommonTypes.FilActorId => address) public _releasedMinerDelegators;
     // mapping(CommonTypes.FilActorId => mapping(address => uint));
     mapping(address => uint) public _lastTimestampMap;
 
-    address _foundation;
-    uint _feeRate;
-    uint _maxDebtRate;
+    address public _foundation;
+    uint public _feeRate;
+    uint public _maxDebtRate;
 
 
-    uint constant public MAX_DEBT_RATE = 1000;
-    uint constant public MAX_FEE_RATE = 1000;
+    uint constant public MAX_DEBT_RATE = 600000;
+    uint constant public MAX_FEE_RATE = 10000;
     uint constant public RATE_BASE = 1000000;
 
-    uint constant REQUIRED_QUOTA = 1e68 - 1e18;
-    int64 constant REQUIRED_EXPIRATION = type(int64).max;
+    uint constant public REQUIRED_QUOTA = 1e68 - 1e18;
+    int64 constant public REQUIRED_EXPIRATION = type(int64).max;
 
     modifier onlyFoundation {
         require(msg.sender == _foundation, "You are not the foundation");
         _;
     }
 
-    constructor(address foundation, uint max_debt_rate) {
+    constructor(address foundation, uint maxDebtRate) {
         require(foundation != address(0), "The foundation address cannot be set zero address");
         _foundation = foundation;
-        require(max_debt_rate < MAX_DEBT_RATE, "The max_debt_rate must be less than or equal to MAX_DEBT_RATE");
-        _maxDebtRate = max_debt_rate;
+        require(maxDebtRate < MAX_DEBT_RATE, "The maxDebtRate must be less than or equal to MAX_DEBT_RATE");
+        _maxDebtRate = maxDebtRate;
     }
 
     function _validateTimestamp(uint timestamp) internal {
@@ -112,26 +114,26 @@ contract SPexBeneficiary {
         require(maxDebtAmount <= (minerBalance * _maxDebtRate / RATE_BASE), "The maxDebtAmount exceeds the maximum dept amount of the miner");
     }
 
-    function _preMortgageBeneficiaryToSpex(CommonTypes.FilActorId minerId, bytes memory sign, uint timestamp, uint maxDebtAmount) internal {
+    function _prePledgeBeneficiaryToSpex(CommonTypes.FilActorId minerId, bytes memory sign, uint timestamp, uint maxDebtAmount) internal {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_miners[minerId].minerId);
 
         require(minerIdUint64 == 0,  "The beneficiary of miner is already transferred into SPex");
-        delete _transferOutMinersDelegators[minerId];
+        delete _releasedMinerDelegators[minerId];
 
         MinerTypes.GetOwnerReturn memory ownerReturn = MinerAPI.getOwner(minerId);
         uint64 ownerUint64 = PrecompilesAPI.resolveAddress(ownerReturn.owner);
         uint64 senderUint64 = PrecompilesAPI.resolveEthAddress(msg.sender);
-        if (senderUint64 != ownerUint64) {
-            _validateTimestamp(timestamp);
-            Validator.validateOwnerSign(sign, minerId, ownerUint64, timestamp);
-        }
+        // if (senderUint64 != ownerUint64) {
+        //     _validateTimestamp(timestamp);
+        //     Validator.validateOwnerSign(sign, minerId, ownerUint64, timestamp);
+        // }
 
         _checkMaxDebtAmount(minerId, maxDebtAmount);
     }
 
-    function mortgageBeneficiaryToSpex(CommonTypes.FilActorId minerId, bytes memory sign, uint timestamp, uint maxDebtAmount, uint loanDayRate, address receiveAddress) external {
+    function pledgeBeneficiaryToSpex(CommonTypes.FilActorId minerId, bytes memory sign, uint timestamp, uint maxDebtAmount, uint loanDayRate, address receiveAddress) external {
 
-        _preMortgageBeneficiaryToSpex(minerId, sign, timestamp, maxDebtAmount);
+        _prePledgeBeneficiaryToSpex(minerId, sign, timestamp, maxDebtAmount);
 
         MinerTypes.GetBeneficiaryReturn memory beneficiaryRet = MinerAPI.getBeneficiary(minerId);
         MinerTypes.PendingBeneficiaryChange memory proposedBeneficiaryRet = beneficiaryRet.proposed;
@@ -162,11 +164,34 @@ contract SPexBeneficiary {
             lastUpdateTime: block.timestamp
         });
         _miners[minerId] = miner;
-        emit EventMortgageBeneficiaryToSpex(minerId, msg.sender, maxDebtAmount, loanDayRate, receiveAddress);
+        emit EventPledgeBeneficiaryToSpex(minerId, msg.sender, maxDebtAmount, loanDayRate, receiveAddress);
     }
 
-    function getMinerById(CommonTypes.FilActorId minerId) external view returns (Miner memory) {
-        return _miners[minerId];
+    function releaseBeneficiary(CommonTypes.FilActorId minerId, CommonTypes.FilAddress memory newBeneficiary) external onlyMinerDelegator(minerId) {
+        uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_miners[minerId].minerId);
+        require(minerIdUint64 != 0,  "The beneficiary of miner is not transferred into SPex");
+        require(_miners[minerId].lastDebtAmount == 0 , "The miner is not paid off");
+        MinerTypes.ChangeBeneficiaryParams memory changeBeneficiaryParams = MinerTypes.ChangeBeneficiaryParams({
+                new_beneficiary: newBeneficiary,
+                new_quota: CommonTypes.BigInt(hex"00", false),
+                new_expiration: CommonTypes.ChainEpoch.wrap(0)
+            });
+        MinerAPI.changeBeneficiary(minerId, changeBeneficiaryParams);
+        _releasedMinerDelegators[minerId] = _miners[minerId].delegator;
+        delete _miners[minerId];
+        emit EventReleaseBeneficiary(minerId, newBeneficiary);
+    }
+
+    function releaseBeneficiaryAgain(CommonTypes.FilActorId minerId, CommonTypes.FilAddress memory newBeneficiary) external {
+        require(_releasedMinerDelegators[minerId] != address(0), "The miner has not been released");
+        require(msg.sender == _releasedMinerDelegators[minerId], "You are not the delegator of the miner");
+        MinerTypes.ChangeBeneficiaryParams memory changeBeneficiaryParams = MinerTypes.ChangeBeneficiaryParams({
+                new_beneficiary: newBeneficiary,
+                new_quota: CommonTypes.BigInt(hex"00", false),
+                new_expiration: CommonTypes.ChainEpoch.wrap(0)
+            });
+        MinerAPI.changeBeneficiary(minerId, changeBeneficiaryParams);
+        emit EventReleaseBeneficiaryAgain(minerId, newBeneficiary);
     }
 
     function changeMinerMaxDebtRate(CommonTypes.FilActorId minerId, uint newMaxDebtRate) external onlyMinerDelegator(minerId) {
@@ -183,7 +208,7 @@ contract SPexBeneficiary {
 
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(minerId);
         uint minerBalance = FilAddress.toAddress(minerIdUint64).balance;
-        require((miner.lastDebtAmount + msg.value) <= minerBalance * (_maxDebtRate / RATE_BASE), "the amount must less than or equal than remaining amount");
+        require((miner.lastDebtAmount + msg.value) <= minerBalance * (_maxDebtRate / RATE_BASE), "The amount must less than or equal than remaining amount");
         _increaseAmount(msg.sender, minerId, msg.value);
         payable(miner.receiveAddress).transfer(msg.value);
         emit EventBuyMinerDebt(msg.sender, minerId, msg.value);
@@ -310,14 +335,6 @@ contract SPexBeneficiary {
         miner.loanDayRate = newLoanDayRate;
         emit EventChangeLoanDayRate(minerId, newLoanDayRate);
     }
-
-    function getLoan(address who, CommonTypes.FilActorId minerId) external view returns (Loan memory) {
-        return _loans[who][minerId];
-    }
-
-    function getSela(address who, CommonTypes.FilActorId minerId) external view returns (SellItem memory) {
-        return _sell[who][minerId];
-    }
     
     function changeFoundation(address foundation) external onlyFoundation {
         require(foundation != address(0), "The foundation cannot be set to zero address");
@@ -327,14 +344,6 @@ contract SPexBeneficiary {
     function changeFeeRate(uint newFeeRate) external onlyFoundation {
         require(newFeeRate <= MAX_FEE_RATE, "The fee rate must less than or equal MAX_FEE_RATE");
         _feeRate = newFeeRate;
-    }
-
-    function getFeeRate() external view returns (uint) {
-        return _feeRate;        
-    }
-
-    function getFoundation() external view returns (address) {
-        return _foundation;
     }
 
     function withdraw(address payable to, uint amount) external payable onlyFoundation {
