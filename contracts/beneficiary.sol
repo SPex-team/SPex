@@ -31,6 +31,7 @@ contract SPexBeneficiary {
     event EventReleaseBeneficiaryAgain(CommonTypes.FilActorId, CommonTypes.FilAddress);
     event EventBuyMinerDebt(address, CommonTypes.FilActorId, uint);
     event EventChangeMinerMaxDebtRate(CommonTypes.FilActorId, uint);
+    event EventChangeMinerDisabled(CommonTypes.FilActorId, bool);
     event EventChangeLoanDayRate(CommonTypes.FilActorId, uint);
     event EventChangeReceiveAddress(CommonTypes.FilActorId, address);
     event EventRepayment(address, address, CommonTypes.FilActorId, uint);
@@ -48,6 +49,7 @@ contract SPexBeneficiary {
         uint loanDayRate;
         uint lastDebtAmount;
         uint lastUpdateTime;
+        bool disabled;
     }
 
     struct Loan {
@@ -161,7 +163,8 @@ contract SPexBeneficiary {
             maxDebtAmount: maxDebtAmount,
             loanDayRate: loanDayRate,
             lastDebtAmount: 0,
-            lastUpdateTime: block.timestamp
+            lastUpdateTime: block.timestamp,
+            disabled: false
         });
         _miners[minerId] = miner;
         emit EventPledgeBeneficiaryToSpex(minerId, msg.sender, maxDebtAmount, loanDayRate, receiveAddress);
@@ -169,7 +172,7 @@ contract SPexBeneficiary {
 
     function releaseBeneficiary(CommonTypes.FilActorId minerId, CommonTypes.FilAddress memory newBeneficiary) external onlyMinerDelegator(minerId) {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_miners[minerId].minerId);
-        require(minerIdUint64 != 0,  "The beneficiary of miner is not transferred into SPex");
+        require(minerIdUint64 != 0,  "The beneficiary of miner is not transferred into SPex");  //TODO: Need to remove?
         require(_miners[minerId].lastDebtAmount == 0 , "The miner is not paid off");
         MinerTypes.ChangeBeneficiaryParams memory changeBeneficiaryParams = MinerTypes.ChangeBeneficiaryParams({
                 new_beneficiary: newBeneficiary,
@@ -201,14 +204,21 @@ contract SPexBeneficiary {
         emit EventChangeMinerMaxDebtRate(minerId, newMaxDebtRate);
     }
 
-    function BuyMinerDebt(CommonTypes.FilActorId minerId) external payable {
+    function changeMinerDisabled(CommonTypes.FilActorId minerId, bool disabled) external onlyMinerDelegator(minerId) {
+        Miner storage miner = _miners[minerId];
+        miner.disabled = disabled;
+        emit EventChangeMinerDisabled(minerId, disabled);
+    }
+
+    function buyMinerDebt(CommonTypes.FilActorId minerId) external payable {
         _updateAmount(msg.sender, minerId);
         Miner storage miner = _miners[minerId];
+        require(miner.disabled == false, "THe miner already disabled");
         require((miner.lastDebtAmount + msg.value) <= miner.maxDebtAmount, "The sum of debted amount must less than or equal to maxDebtAmount");
 
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(minerId);
         uint minerBalance = FilAddress.toAddress(minerIdUint64).balance;
-        require((miner.lastDebtAmount + msg.value) <= minerBalance * (_maxDebtRate / RATE_BASE), "The amount must less than or equal than remaining amount");
+        require((miner.lastDebtAmount + msg.value) <= (minerBalance * _maxDebtRate / RATE_BASE), "The amount must less than or equal than remaining amount");
         _increaseAmount(msg.sender, minerId, msg.value);
         payable(miner.receiveAddress).transfer(msg.value);
         emit EventBuyMinerDebt(msg.sender, minerId, msg.value);
@@ -298,7 +308,7 @@ contract SPexBeneficiary {
         miner.lastUpdateTime = newTimestampMiner;
     }
 
-    function withdrawRepayment(address payable who, CommonTypes.FilActorId minerId, uint amount) external {
+    function withdrawRepayment(address payable who, CommonTypes.FilActorId minerId, uint amount) public {
         Miner storage miner = _miners[minerId];
         require(msg.sender == who || msg.sender == miner.delegator, "You are not borrower or delegator of the miner");
 
@@ -316,12 +326,30 @@ contract SPexBeneficiary {
         emit EventWithdrawRepayment(msg.sender, who, minerId, amount);
     }
 
+    function batchWithdrawRepayment(address[] memory whoList, CommonTypes.FilActorId[] memory minerIdList, uint[] memory amountList) external {
+        require(whoList.length == minerIdList.length, "The lengths of whoList and MinerIdList must be equal");
+        require(whoList.length == amountList.length, "The lengths of whoList and amountList must be equal");
+        for (uint i=0; i < whoList.length; i++) {
+            withdrawRepayment(payable(whoList[i]), minerIdList[i], amountList[i]);
+        }
+    }
+
     function repayment(address who, CommonTypes.FilActorId minerId) external payable {
         _preRepayment(who, minerId, msg.value);
         _transferRepayment(who, msg.value);
         _reduceAmount(who, minerId, msg.value);
 
         emit EventRepayment(msg.sender, who, minerId, msg.value);
+    }
+
+    function batchRepayment(address[] memory whoList, CommonTypes.FilActorId[] memory minerIdList, uint[] memory amountList) external {
+        require(whoList.length == minerIdList.length, "The lengths of whoList and MinerIdList must be equal");
+        require(whoList.length == amountList.length, "The lengths of whoList and amountList must be equal");
+        for (uint i=0; i<whoList.length; i++) {
+            _preRepayment(payable(whoList[i]), minerIdList[i], amountList[i]);
+            _transferRepayment(payable(whoList[i]), amountList[i]);
+            _reduceAmount(payable(whoList[i]), minerIdList[i], amountList[i]);
+        }
     }
 
     function changeReceiveAddress(CommonTypes.FilActorId minerId, address newReceiveAddress) external onlyMinerDelegator(minerId) {
