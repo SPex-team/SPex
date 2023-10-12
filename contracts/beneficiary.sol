@@ -138,8 +138,7 @@ contract SPexBeneficiary {
 
         _prePledgeBeneficiaryToSpex(minerId, sign, timestamp, maxDebtAmount);
 
-        MinerTypes.GetBeneficiaryReturn memory beneficiaryRet = MinerAPI.getBeneficiary(minerId);
-        MinerTypes.PendingBeneficiaryChange memory proposedBeneficiaryRet = beneficiaryRet.proposed;
+        MinerTypes.PendingBeneficiaryChange memory proposedBeneficiaryRet = MinerAPI.getBeneficiary(minerId).proposed;
         // new_quota check
 
         // uint quota = proposedBeneficiaryRet.new_quota.bigInt2Uint();
