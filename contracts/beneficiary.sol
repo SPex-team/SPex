@@ -30,10 +30,11 @@ contract SPexBeneficiary {
     event EventReleaseBeneficiary(CommonTypes.FilActorId, CommonTypes.FilAddress);
     event EventReleaseBeneficiaryAgain(CommonTypes.FilActorId, CommonTypes.FilAddress);
     event EventBuyMinerDebt(address, CommonTypes.FilActorId, uint);
-    event EventChangeMinerMaxDebtRate(CommonTypes.FilActorId, uint);
+    event EventChangeMinerDelegator(CommonTypes.FilActorId, address);
+    event EventChangeMinerMaxDebtAmount(CommonTypes.FilActorId, uint);
     event EventChangeMinerDisabled(CommonTypes.FilActorId, bool);
     event EventChangeLoanDayRate(CommonTypes.FilActorId, uint);
-    event EventChangeReceiveAddress(CommonTypes.FilActorId, address);
+    event EventChangeMinerReceiveAddress(CommonTypes.FilActorId, address);
     event EventRepayment(address, address, CommonTypes.FilActorId, uint);
     event EventWithdrawRepayment(address, address, CommonTypes.FilActorId, uint);
     event EventSellLoan(address, CommonTypes.FilActorId, uint, uint);
@@ -197,17 +198,49 @@ contract SPexBeneficiary {
         emit EventReleaseBeneficiaryAgain(minerId, newBeneficiary);
     }
 
-    function changeMinerMaxDebtRate(CommonTypes.FilActorId minerId, uint newMaxDebtRate) external onlyMinerDelegator(minerId) {
-        Miner storage miner = _miners[minerId];
-        require(miner.lastDebtAmount == 0, "You must repayment all your depts before you can change MaxDebtRate");
-        _checkMaxDebtAmount(minerId, newMaxDebtRate);
-        emit EventChangeMinerMaxDebtRate(minerId, newMaxDebtRate);
+    function changeMinerDelegator(CommonTypes.FilActorId minerId, address newDelegator) public onlyMinerDelegator(minerId) {
+        _miners[minerId].delegator = newDelegator;
+        emit EventChangeMinerDelegator(minerId, newDelegator);
     }
 
-    function changeMinerDisabled(CommonTypes.FilActorId minerId, bool disabled) external onlyMinerDelegator(minerId) {
+    function changeMinerReceiveAddress(CommonTypes.FilActorId minerId, address newReceiveAddress) public onlyMinerDelegator(minerId) {
+        _miners[minerId].receiveAddress = newReceiveAddress;
+        emit EventChangeMinerReceiveAddress(minerId, newReceiveAddress);
+    }
+
+    function changeMinerMaxDebtAmount(CommonTypes.FilActorId minerId, uint newMaxDebtAmount) public onlyMinerDelegator(minerId) {
         Miner storage miner = _miners[minerId];
-        miner.disabled = disabled;
+        require(miner.lastDebtAmount == 0, "You must repayment all your depts before you can change MaxDebtRate");
+        _checkMaxDebtAmount(minerId, newMaxDebtAmount);
+        miner.maxDebtAmount = newMaxDebtAmount;
+        emit EventChangeMinerMaxDebtAmount(minerId, newMaxDebtAmount);
+    }
+
+    function changeLoanDayRate(CommonTypes.FilActorId minerId, uint newLoanDayRate) public onlyMinerDelegator(minerId) {
+        Miner storage miner = _miners[minerId];
+        require(miner.lastDebtAmount == 0, "You must repayment all your depts before you can change LoanDayRate");
+        miner.loanDayRate = newLoanDayRate;
+        emit EventChangeLoanDayRate(minerId, newLoanDayRate);
+    }
+
+    function changeMinerDisabled(CommonTypes.FilActorId minerId, bool disabled) public onlyMinerDelegator(minerId) {
+        _miners[minerId].disabled = disabled;
         emit EventChangeMinerDisabled(minerId, disabled);
+    }
+
+    function changeMinerBorrowParameters(
+        CommonTypes.FilActorId minerId,
+        address newDelegator,
+        address newReceiveAddress,
+        uint newMaxDebtAmount,
+        uint newLoanDayRate,
+        bool disabled
+    ) external onlyMinerDelegator(minerId) {
+        changeMinerDelegator(minerId, newDelegator);
+        changeMinerReceiveAddress(minerId, newReceiveAddress);
+        changeMinerMaxDebtAmount(minerId, newMaxDebtAmount);
+        changeLoanDayRate(minerId, newLoanDayRate);
+        changeMinerDisabled(minerId, disabled);
     }
 
     function buyMinerDebt(CommonTypes.FilActorId minerId) external payable {
@@ -352,18 +385,6 @@ contract SPexBeneficiary {
         }
     }
 
-    function changeReceiveAddress(CommonTypes.FilActorId minerId, address newReceiveAddress) external onlyMinerDelegator(minerId) {
-        _miners[minerId].receiveAddress = newReceiveAddress;
-        emit EventChangeReceiveAddress(minerId, newReceiveAddress);
-    }
-
-    function changeLoanDayRate(CommonTypes.FilActorId minerId, uint newLoanDayRate) external onlyMinerDelegator(minerId) {
-        Miner storage miner = _miners[minerId];
-        require(miner.lastDebtAmount == 0, "You must repayment all your depts before you can change LoanDayRate");
-        miner.loanDayRate = newLoanDayRate;
-        emit EventChangeLoanDayRate(minerId, newLoanDayRate);
-    }
-    
     function changeFoundation(address foundation) external onlyFoundation {
         require(foundation != address(0), "The foundation cannot be set to zero address");
         _foundation = foundation;
