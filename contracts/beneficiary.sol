@@ -46,11 +46,11 @@ contract SPexBeneficiary {
         CommonTypes.FilActorId minerId;
         address delegator;
         uint maxDebtAmount;
-        address receiveAddress;
         uint loanDayRate;
+        address receiveAddress;
+        bool disabled;
         uint lastDebtAmount;
         uint lastUpdateTime;
-        bool disabled;
     }
 
     struct Loan {
@@ -134,7 +134,7 @@ contract SPexBeneficiary {
         _checkMaxDebtAmount(minerId, maxDebtAmount);
     }
 
-    function pledgeBeneficiaryToSpex(CommonTypes.FilActorId minerId, bytes memory sign, uint timestamp, uint maxDebtAmount, uint loanDayRate, address receiveAddress) external {
+    function pledgeBeneficiaryToSpex(CommonTypes.FilActorId minerId, bytes memory sign, uint timestamp, uint maxDebtAmount, uint loanDayRate, address receiveAddress, bool disabled) external {
 
         _prePledgeBeneficiaryToSpex(minerId, sign, timestamp, maxDebtAmount);
 
@@ -160,12 +160,12 @@ contract SPexBeneficiary {
         Miner memory miner = Miner ({
             minerId: minerId,
             delegator: msg.sender,
-            receiveAddress: receiveAddress,
             maxDebtAmount: maxDebtAmount,
             loanDayRate: loanDayRate,
+            receiveAddress: receiveAddress,
+            disabled: disabled,
             lastDebtAmount: 0,
-            lastUpdateTime: block.timestamp,
-            disabled: false
+            lastUpdateTime: block.timestamp
         });
         _miners[minerId] = miner;
         emit EventPledgeBeneficiaryToSpex(minerId, msg.sender, maxDebtAmount, loanDayRate, receiveAddress);
@@ -203,11 +203,6 @@ contract SPexBeneficiary {
         emit EventChangeMinerDelegator(minerId, newDelegator);
     }
 
-    function changeMinerReceiveAddress(CommonTypes.FilActorId minerId, address newReceiveAddress) public onlyMinerDelegator(minerId) {
-        _miners[minerId].receiveAddress = newReceiveAddress;
-        emit EventChangeMinerReceiveAddress(minerId, newReceiveAddress);
-    }
-
     function changeMinerMaxDebtAmount(CommonTypes.FilActorId minerId, uint newMaxDebtAmount) public onlyMinerDelegator(minerId) {
         Miner storage miner = _miners[minerId];
         require(miner.lastDebtAmount == 0, "You must repayment all your depts before you can change MaxDebtRate");
@@ -223,6 +218,11 @@ contract SPexBeneficiary {
         emit EventChangeLoanDayRate(minerId, newLoanDayRate);
     }
 
+    function changeMinerReceiveAddress(CommonTypes.FilActorId minerId, address newReceiveAddress) public onlyMinerDelegator(minerId) {
+        _miners[minerId].receiveAddress = newReceiveAddress;
+        emit EventChangeMinerReceiveAddress(minerId, newReceiveAddress);
+    }
+
     function changeMinerDisabled(CommonTypes.FilActorId minerId, bool disabled) public onlyMinerDelegator(minerId) {
         _miners[minerId].disabled = disabled;
         emit EventChangeMinerDisabled(minerId, disabled);
@@ -231,15 +231,15 @@ contract SPexBeneficiary {
     function changeMinerBorrowParameters(
         CommonTypes.FilActorId minerId,
         address newDelegator,
-        address newReceiveAddress,
         uint newMaxDebtAmount,
         uint newLoanDayRate,
+        address newReceiveAddress,
         bool disabled
     ) external onlyMinerDelegator(minerId) {
         changeMinerDelegator(minerId, newDelegator);
-        changeMinerReceiveAddress(minerId, newReceiveAddress);
         changeMinerMaxDebtAmount(minerId, newMaxDebtAmount);
         changeLoanDayRate(minerId, newLoanDayRate);
+        changeMinerReceiveAddress(minerId, newReceiveAddress);
         changeMinerDisabled(minerId, disabled);
     }
 
