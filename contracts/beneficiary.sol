@@ -90,7 +90,7 @@ contract SPexBeneficiary {
     constructor(address foundation, uint maxDebtRate) {
         require(foundation != address(0), "The foundation address cannot be set zero address");
         _foundation = foundation;
-        require(maxDebtRate < MAX_DEBT_RATE, "The maxDebtRate must be less than or equal to MAX_DEBT_RATE");
+        require(maxDebtRate <= MAX_DEBT_RATE, "The maxDebtRate must be less than or equal to MAX_DEBT_RATE");
         _maxDebtRate = maxDebtRate;
     }
 
