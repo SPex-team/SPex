@@ -74,8 +74,6 @@ contract SPexBeneficiary {
     uint public _feeRate;
     uint public _maxDebtRate;
 
-
-    uint constant public MAX_DEBT_RATE = 600000;
     uint constant public MAX_FEE_RATE = 10000;
     uint constant public RATE_BASE = 1000000;
 
@@ -90,7 +88,6 @@ contract SPexBeneficiary {
     constructor(address foundation, uint maxDebtRate) {
         require(foundation != address(0), "The foundation address cannot be set zero address");
         _foundation = foundation;
-        require(maxDebtRate <= MAX_DEBT_RATE, "The maxDebtRate must be less than or equal to MAX_DEBT_RATE");
         _maxDebtRate = maxDebtRate;
     }
 
@@ -298,7 +295,6 @@ contract SPexBeneficiary {
     }
 
     function changeMaxDebtRate(uint newMaxDebtRate) external onlyFoundation {
-        require(newMaxDebtRate <= MAX_DEBT_RATE, "The newMaxDebtRate must be less than or equal MAX_DEBT_RATE");
         _maxDebtRate = newMaxDebtRate;
     }
 
