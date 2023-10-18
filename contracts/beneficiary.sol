@@ -10,8 +10,6 @@ import "@zondax/filecoin-solidity/contracts/v0.8/types/MinerTypes.sol";
 import "@zondax/filecoin-solidity/contracts/v0.8/AccountAPI.sol";
 import "@zondax/filecoin-solidity/contracts/v0.8/types/AccountTypes.sol";
 
-import "@zondax/filecoin-solidity/contracts/v0.8/types/CommonTypes.sol";
-
 import "@zondax/filecoin-solidity/contracts/v0.8/PrecompilesAPI.sol";
 import "@zondax/filecoin-solidity/contracts/v0.8/utils/FilAddresses.sol";
 
