@@ -378,6 +378,16 @@ contract SPexBeneficiary {
         }
     }
 
+    function getCurrentTotalAmountOwed(CommonTypes.FilActorId minerId) external view returns(uint) {
+        Miner storage miner = _miners[minerId];
+        return Common.calculatePrincipleAndInterest(miner.lastDebtAmount, miner.lastUpdateTime, block.timestamp, miner.loanDayRate, RATE_BASE);
+    }
+
+    function getCurrentAmountOwedToLender(address lender, CommonTypes.FilActorId minerId) external view returns(uint) {
+        Loan storage loan = _loans[lender][minerId];
+        return Common.calculatePrincipleAndInterest(loan.lastAmount, loan.lastUpdateTime, block.timestamp, _miners[minerId].loanDayRate, RATE_BASE);
+    }
+
     function changeFoundation(address foundation) external onlyFoundation {
         require(foundation != address(0), "The foundation cannot be set to zero address");
         _foundation = foundation;
