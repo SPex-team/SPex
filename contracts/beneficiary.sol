@@ -332,7 +332,7 @@ contract SPexBeneficiary {
         Miner storage miner = _miners[minerId];
         loan.lastAmount = Common.calculatePrincipleAndInterest(loan.lastAmount, loan.lastUpdateTime, blockTimestamp, miner.loanDayRate, RATE_BASE);
         loan.lastUpdateTime = blockTimestamp;
-        miner.lastDebtAmount = Common.calculatePrincipleAndInterest(miner.lastDebtAmount, loan.lastUpdateTime, blockTimestamp, miner.loanDayRate, RATE_BASE);
+        miner.lastDebtAmount = Common.calculatePrincipleAndInterest(miner.lastDebtAmount, miner.lastUpdateTime, blockTimestamp, miner.loanDayRate, RATE_BASE);
         miner.lastUpdateTime = blockTimestamp;
     }
 
