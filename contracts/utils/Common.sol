@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import "@zondax/filecoin-solidity/contracts/v0.8/AccountAPI.sol";
 import "@zondax/filecoin-solidity/contracts/v0.8/types/CommonTypes.sol";
-
+import { UD60x18, ud, uUNIT } from "@prb/math/src/UD60x18.sol";
 
 
 library Common {
@@ -13,17 +13,18 @@ library Common {
         bool neg;
     }
 
-    function calculateInterest(uint loanAmount, uint lastTimestamp, uint dayRate, uint dayRateBase) internal view returns(uint, uint) {
-        uint daySecondes = 86400;
-        uint dayNumber = (block.timestamp - lastTimestamp) / daySecondes;
-        uint currentLoanAmount = loanAmount;
-        for (uint i=0; i < dayNumber; i++) {
-            uint interest = currentLoanAmount * dayRate / dayRateBase;
-            currentLoanAmount += interest;
-        }
-        uint totalInterest = currentLoanAmount - loanAmount;
-        uint newTimestamp = lastTimestamp + (daySecondes * dayNumber);
-        return (totalInterest, newTimestamp);
+    function calculatePrincipleAndInterest(uint loanAmount, uint startTimestamp, uint endTimestamp, uint dayRate, uint dayRateBase) internal pure returns (uint) {
+        uint loanDurationDays = (endTimestamp - startTimestamp) / 86400;    //There are 86400 seconds in one day
+        //The fallowing line uses the formula <Principle> + <Interest> = <Principle> * (1 + <Daily Interest Rate>)^<Loan Duration in Days>
+        return toUint(toUD60x18(dayRateBase + dayRate, dayRateBase).powu(loanDurationDays), dayRateBase) * loanAmount / dayRateBase;
+    }
+
+    function toUint(UD60x18 input, uint rateBase) private pure returns (uint) {
+        return input.intoUint256() * rateBase / uUNIT;
+    }
+
+    function toUD60x18(uint input, uint rateBase) private pure returns (UD60x18){
+        return ud(input * uUNIT / rateBase);
     }
 
     function bigInt2Integer(CommonTypes.BigInt memory num) internal pure returns (Integer memory result) {

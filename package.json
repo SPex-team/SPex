@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@openzeppelin/test-helpers": "^0.5.16",
+    "@prb/math": "3.3.1",
     "@zondax/filecoin-solidity": "^4.0.3",
     "fevmate": "^1.0.3"
   }
