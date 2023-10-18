@@ -201,7 +201,11 @@ contract SPexBeneficiary {
 
     function changeMinerMaxDebtAmount(CommonTypes.FilActorId minerId, uint newMaxDebtAmount) public onlyMinerDelegator(minerId) {
         Miner storage miner = _miners[minerId];
-        require(miner.lastDebtAmount == 0, "You must repayment all your depts before you can change MaxDebtRate");
+        uint blockTimestamp = block.timestamp;
+        uint currentDebtAmount = Common.calculatePrincipleAndInterest(miner.lastDebtAmount, miner.lastUpdateTime, blockTimestamp, miner.loanDayRate, RATE_BASE);
+        miner.lastDebtAmount = currentDebtAmount;
+        miner.lastUpdateTime = blockTimestamp;
+        require(newMaxDebtAmount >= currentDebtAmount, "New debt amount smaller than current amount owed");
         _checkMaxDebtAmount(minerId, newMaxDebtAmount);
         miner.maxDebtAmount = newMaxDebtAmount;
         emit EventChangeMinerMaxDebtAmount(minerId, newMaxDebtAmount);
