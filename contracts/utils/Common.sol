@@ -15,7 +15,7 @@ library Common {
 
     function calculatePrincipleAndInterest(uint loanAmount, uint startTimestamp, uint endTimestamp, uint annualRate, uint rateBase) public pure returns (uint) {
         uint borrowPeriod = endTimestamp - startTimestamp;
-        if (borrowPeriod == 0 || loanAmount == 0) return loanAmount;
+        if (loanAmount == 0 || borrowPeriod == 0) return loanAmount;
         UD60x18 x = ud(borrowPeriod * annualRate * uUNIT / (31536000 * rateBase));
         return x.exp().intoUint256() * loanAmount / uUNIT;    
     }
