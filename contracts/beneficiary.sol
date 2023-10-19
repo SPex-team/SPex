@@ -31,7 +31,7 @@ contract SPexBeneficiary {
     event EventChangeMinerDelegator(CommonTypes.FilActorId, address);
     event EventChangeMinerMaxDebtAmount(CommonTypes.FilActorId, uint);
     event EventChangeMinerDisabled(CommonTypes.FilActorId, bool);
-    event EventChangeLoanDayRate(CommonTypes.FilActorId, uint);
+    event EventChangeLoanInterestRate(CommonTypes.FilActorId, uint);
     event EventChangeMinerReceiveAddress(CommonTypes.FilActorId, address);
     event EventRepayment(address, address, CommonTypes.FilActorId, uint);
     event EventWithdrawRepayment(address, address, CommonTypes.FilActorId, uint);
@@ -44,7 +44,7 @@ contract SPexBeneficiary {
         CommonTypes.FilActorId minerId;
         address delegator;
         uint maxDebtAmount;
-        uint loanDayRate;
+        uint loanInterestRate;
         address receiveAddress;
         bool disabled;
         uint lastDebtAmount;
@@ -129,7 +129,7 @@ contract SPexBeneficiary {
         _checkMaxDebtAmount(minerId, maxDebtAmount);
     }
 
-    function pledgeBeneficiaryToSpex(CommonTypes.FilActorId minerId, bytes memory sign, uint timestamp, uint maxDebtAmount, uint loanDayRate, address receiveAddress, bool disabled) external {
+    function pledgeBeneficiaryToSpex(CommonTypes.FilActorId minerId, bytes memory sign, uint timestamp, uint maxDebtAmount, uint loanInterestRate, address receiveAddress, bool disabled) external {
 
         _prePledgeBeneficiaryToSpex(minerId, sign, timestamp, maxDebtAmount);
 
@@ -155,14 +155,14 @@ contract SPexBeneficiary {
             minerId: minerId,
             delegator: msg.sender,
             maxDebtAmount: maxDebtAmount,
-            loanDayRate: loanDayRate,
+            loanInterestRate: loanInterestRate,
             receiveAddress: receiveAddress,
             disabled: disabled,
             lastDebtAmount: 0,
             lastUpdateTime: block.timestamp
         });
         _miners[minerId] = miner;
-        emit EventPledgeBeneficiaryToSpex(minerId, msg.sender, maxDebtAmount, loanDayRate, receiveAddress);
+        emit EventPledgeBeneficiaryToSpex(minerId, msg.sender, maxDebtAmount, loanInterestRate, receiveAddress);
     }
 
     function releaseBeneficiary(CommonTypes.FilActorId minerId, CommonTypes.FilAddress memory newBeneficiary) external onlyMinerDelegator(minerId) {
@@ -200,7 +200,7 @@ contract SPexBeneficiary {
     function changeMinerMaxDebtAmount(CommonTypes.FilActorId minerId, uint newMaxDebtAmount) public onlyMinerDelegator(minerId) {
         Miner storage miner = _miners[minerId];
         uint blockTimestamp = block.timestamp;
-        uint currentDebtAmount = Common.calculatePrincipleAndInterest(miner.lastDebtAmount, miner.lastUpdateTime, blockTimestamp, miner.loanDayRate, RATE_BASE);
+        uint currentDebtAmount = Common.calculatePrincipleAndInterest(miner.lastDebtAmount, miner.lastUpdateTime, blockTimestamp, miner.loanInterestRate, RATE_BASE);
         miner.lastDebtAmount = currentDebtAmount;
         miner.lastUpdateTime = blockTimestamp;
         require(newMaxDebtAmount >= currentDebtAmount, "New debt amount smaller than current amount owed");
@@ -209,11 +209,11 @@ contract SPexBeneficiary {
         emit EventChangeMinerMaxDebtAmount(minerId, newMaxDebtAmount);
     }
 
-    function changeLoanDayRate(CommonTypes.FilActorId minerId, uint newLoanDayRate) public onlyMinerDelegator(minerId) {
+    function changeLoanInterestRate(CommonTypes.FilActorId minerId, uint newLoanInterestRate) public onlyMinerDelegator(minerId) {
         Miner storage miner = _miners[minerId];
-        require(miner.lastDebtAmount == 0, "You must repayment all your depts before you can change LoanDayRate");
-        miner.loanDayRate = newLoanDayRate;
-        emit EventChangeLoanDayRate(minerId, newLoanDayRate);
+        require(miner.lastDebtAmount == 0, "You must repayment all your depts before you can change loanInterestRate");
+        miner.loanInterestRate = newLoanInterestRate;
+        emit EventChangeLoanInterestRate(minerId, newLoanInterestRate);
     }
 
     function changeMinerReceiveAddress(CommonTypes.FilActorId minerId, address newReceiveAddress) public onlyMinerDelegator(minerId) {
@@ -230,13 +230,13 @@ contract SPexBeneficiary {
         CommonTypes.FilActorId minerId,
         address newDelegator,
         uint newMaxDebtAmount,
-        uint newLoanDayRate,
+        uint newLoanInterestRate,
         address newReceiveAddress,
         bool disabled
     ) external onlyMinerDelegator(minerId) {
         changeMinerDelegator(minerId, newDelegator);
         changeMinerMaxDebtAmount(minerId, newMaxDebtAmount);
-        changeLoanDayRate(minerId, newLoanDayRate);
+        changeLoanInterestRate(minerId, newLoanInterestRate);
         changeMinerReceiveAddress(minerId, newReceiveAddress);
         changeMinerDisabled(minerId, disabled);
     }
@@ -259,7 +259,7 @@ contract SPexBeneficiary {
         require(_sell[msg.sender][minerId].amount == 0, "You already have a pending order for this miner");
         Loan storage loan = _loans[msg.sender][minerId];
         Miner storage miner = _miners[minerId];
-        uint newAmount = Common.calculatePrincipleAndInterest(loan.lastAmount, loan.lastUpdateTime, block.timestamp, miner.loanDayRate, RATE_BASE);
+        uint newAmount = Common.calculatePrincipleAndInterest(loan.lastAmount, loan.lastUpdateTime, block.timestamp, miner.loanInterestRate, RATE_BASE);
         require(amount <= newAmount, "Insufficient amount");
         SellItem memory sellItem = SellItem({
             amount: amount,
@@ -330,9 +330,9 @@ contract SPexBeneficiary {
         uint blockTimestamp = block.timestamp;
         Loan storage loan = _loans[user][minerId];
         Miner storage miner = _miners[minerId];
-        loan.lastAmount = Common.calculatePrincipleAndInterest(loan.lastAmount, loan.lastUpdateTime, blockTimestamp, miner.loanDayRate, RATE_BASE);
+        loan.lastAmount = Common.calculatePrincipleAndInterest(loan.lastAmount, loan.lastUpdateTime, blockTimestamp, miner.loanInterestRate, RATE_BASE);
         loan.lastUpdateTime = blockTimestamp;
-        miner.lastDebtAmount = Common.calculatePrincipleAndInterest(miner.lastDebtAmount, miner.lastUpdateTime, blockTimestamp, miner.loanDayRate, RATE_BASE);
+        miner.lastDebtAmount = Common.calculatePrincipleAndInterest(miner.lastDebtAmount, miner.lastUpdateTime, blockTimestamp, miner.loanInterestRate, RATE_BASE);
         miner.lastUpdateTime = blockTimestamp;
     }
 
@@ -382,12 +382,12 @@ contract SPexBeneficiary {
 
     function getCurrentTotalAmountOwed(CommonTypes.FilActorId minerId) external view returns(uint) {
         Miner storage miner = _miners[minerId];
-        return Common.calculatePrincipleAndInterest(miner.lastDebtAmount, miner.lastUpdateTime, block.timestamp, miner.loanDayRate, RATE_BASE);
+        return Common.calculatePrincipleAndInterest(miner.lastDebtAmount, miner.lastUpdateTime, block.timestamp, miner.loanInterestRate, RATE_BASE);
     }
 
     function getCurrentAmountOwedToLender(address lender, CommonTypes.FilActorId minerId) external view returns(uint) {
         Loan storage loan = _loans[lender][minerId];
-        return Common.calculatePrincipleAndInterest(loan.lastAmount, loan.lastUpdateTime, block.timestamp, _miners[minerId].loanDayRate, RATE_BASE);
+        return Common.calculatePrincipleAndInterest(loan.lastAmount, loan.lastUpdateTime, block.timestamp, _miners[minerId].loanInterestRate, RATE_BASE);
     }
 
     function changeFoundation(address foundation) external onlyFoundation {
