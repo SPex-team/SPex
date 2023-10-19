@@ -199,10 +199,7 @@ contract SPexBeneficiary {
 
     function changeMinerMaxDebtAmount(CommonTypes.FilActorId minerId, uint newMaxDebtAmount) public onlyMinerDelegator(minerId) {
         Miner storage miner = _miners[minerId];
-        uint blockTimestamp = block.timestamp;
-        uint currentDebtAmount = Common.calculatePrincipleAndInterest(miner.lastDebtAmount, miner.lastUpdateTime, blockTimestamp, miner.loanInterestRate, RATE_BASE);
-        miner.lastDebtAmount = currentDebtAmount;
-        miner.lastUpdateTime = blockTimestamp;
+        uint currentDebtAmount = _updateMinerDebtAmount(minerId);
         require(newMaxDebtAmount >= currentDebtAmount, "New debt amount smaller than current amount owed");
         _checkMaxDebtAmount(minerId, newMaxDebtAmount);
         miner.maxDebtAmount = newMaxDebtAmount;
@@ -242,7 +239,7 @@ contract SPexBeneficiary {
     }
 
     function buyMinerDebt(CommonTypes.FilActorId minerId) external payable {
-        _updateAmount(msg.sender, minerId);
+        _updateOwedAmounts(msg.sender, minerId);
         Miner storage miner = _miners[minerId];
         require(miner.disabled == false, "THe miner already disabled");
         require((miner.lastDebtAmount + msg.value) <= miner.maxDebtAmount, "The sum of debted amount must less than or equal to maxDebtAmount");
@@ -257,9 +254,7 @@ contract SPexBeneficiary {
 
     function sellLoan(CommonTypes.FilActorId minerId, uint amount, uint price) public {
         require(_sell[msg.sender][minerId].amount == 0, "You already have a pending order for this miner");
-        Loan storage loan = _loans[msg.sender][minerId];
-        Miner storage miner = _miners[minerId];
-        uint newAmount = Common.calculatePrincipleAndInterest(loan.lastAmount, loan.lastUpdateTime, block.timestamp, miner.loanInterestRate, RATE_BASE);
+        uint newAmount = _updateLoanOwedAmount(msg.sender, minerId);
         require(amount <= newAmount, "Insufficient amount");
         SellItem memory sellItem = SellItem({
             amount: amount,
@@ -286,8 +281,8 @@ contract SPexBeneficiary {
         require(sellItem.amount != 0, "The user is not selling loan of this miner");
         require(msg.value == sellItem.price, "The pay amount is not equal sale price");
         payable(who).transfer(sellItem.price);
-        _updateAmount(who, minerId);
-        _updateAmount(msg.sender, minerId);
+        _updateLoanOwedAmount(who, minerId);
+        _updateLoanOwedAmount(msg.sender, minerId);
         Loan storage sellerLoan = _loans[who][minerId];
         Loan storage buyerLoan = _loans[msg.sender][minerId];
         sellerLoan.lastAmount -= sellItem.amount;
@@ -315,7 +310,7 @@ contract SPexBeneficiary {
     }
 
     function _preRepayment(address who, CommonTypes.FilActorId minerId, uint amount) internal {
-        _updateAmount(who, minerId);
+        _updateOwedAmounts(who, minerId);
         Loan storage loan = _loans[who][minerId];
         SellItem storage sellItem =  _sell[who][minerId];
         require(amount <= loan.lastAmount, "The amount must be less than or equal sum of principal and interest");
@@ -326,7 +321,7 @@ contract SPexBeneficiary {
         }
     }
 
-    function _updateAmount(address user, CommonTypes.FilActorId minerId) internal {
+    function _updateOwedAmounts(address user, CommonTypes.FilActorId minerId) internal {
         uint blockTimestamp = block.timestamp;
         Loan storage loan = _loans[user][minerId];
         Miner storage miner = _miners[minerId];
@@ -334,6 +329,22 @@ contract SPexBeneficiary {
         loan.lastUpdateTime = blockTimestamp;
         miner.lastDebtAmount = Common.calculatePrincipleAndInterest(miner.lastDebtAmount, miner.lastUpdateTime, blockTimestamp, miner.loanInterestRate, RATE_BASE);
         miner.lastUpdateTime = blockTimestamp;
+    }
+
+    function _updateMinerDebtAmount(CommonTypes.FilActorId minerId) internal returns (uint currentDebtAmount) {
+        uint blockTimestamp = block.timestamp;
+        Miner storage miner = _miners[minerId];
+        currentDebtAmount = Common.calculatePrincipleAndInterest(miner.lastDebtAmount, miner.lastUpdateTime, blockTimestamp, miner.loanInterestRate, RATE_BASE);
+        miner.lastDebtAmount = currentDebtAmount;
+        miner.lastUpdateTime = blockTimestamp;
+    }
+
+    function _updateLoanOwedAmount(address user, CommonTypes.FilActorId minerId) internal returns (uint currentOwedAmount) {
+        uint blockTimestamp = block.timestamp;
+        Loan storage loan = _loans[user][minerId];
+        currentOwedAmount = Common.calculatePrincipleAndInterest(loan.lastAmount, loan.lastUpdateTime, blockTimestamp, _miners[minerId].loanInterestRate, RATE_BASE);
+        loan.lastAmount = currentOwedAmount;
+        loan.lastUpdateTime = blockTimestamp;
     }
 
     function withdrawRepayment(address payable who, CommonTypes.FilActorId minerId, uint amount) public {
