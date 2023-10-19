@@ -285,7 +285,7 @@ contract SPexBeneficiary {
         SellItem storage sellItem = _sell[who][minerId];
         require(sellItem.amount != 0, "The user is not selling loan of this miner");
         require(msg.value == sellItem.price, "The pay amount is not equal sale price");
-        payable(who).transfer(sellItem.amount);
+        payable(who).transfer(sellItem.price);
         _updateAmount(who, minerId);
         _updateAmount(msg.sender, minerId);
         Loan storage sellerLoan = _loans[who][minerId];
