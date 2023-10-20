@@ -298,15 +298,15 @@ contract SPexBeneficiary {
         _maxDebtRate = newMaxDebtRate;
     }
 
-    function _reduceAmount(address bondOwner, CommonTypes.FilActorId minerId, uint amount) internal returns (uint amountRemaining) {
+    function _reduceAmount(address bondOwner, CommonTypes.FilActorId minerId, uint amount) internal returns (uint amountRepaid) {
         Loan storage loan = _loans[bondOwner][minerId];
         Miner storage miner = _miners[minerId];
         if (amount < loan.lastAmount) { //Payed less than total amount owed to lender
-            amountRemaining = 0;
+            amountRepaid = amount;
             miner.lastDebtAmount -= amount;
             loan.lastAmount -= amount;
         } else {    //Payed more or equal to total debt
-            amountRemaining = amount - loan.lastAmount;
+            amountRepaid = loan.lastAmount;
             miner.lastDebtAmount -= loan.lastAmount;
             loan.lastAmount = 0;
         }
@@ -367,7 +367,7 @@ contract SPexBeneficiary {
 
         _preRepayment(bondOwner, minerId, amount);
 
-        actualRepaymentAmount = amount - _reduceAmount(bondOwner, minerId, amount);
+        actualRepaymentAmount = _reduceAmount(bondOwner, minerId, amount);
 
         CommonTypes.BigInt memory amountBigInt = Common.uint2BigInt(actualRepaymentAmount);
         CommonTypes.BigInt memory actuallyAmountBitInt = MinerAPI.withdrawBalance(minerId, amountBigInt);
@@ -391,10 +391,9 @@ contract SPexBeneficiary {
     function repayment(address who, CommonTypes.FilActorId minerId) external payable returns (uint actualRepaymentAmount) {
         uint messageValue = msg.value;
         _preRepayment(who, minerId, messageValue);
-        uint remainingAmount = _reduceAmount(who, minerId, messageValue);
-        actualRepaymentAmount = messageValue - remainingAmount;
+        actualRepaymentAmount = _reduceAmount(who, minerId, messageValue);
         _transferRepayment(who, actualRepaymentAmount);
-        payable(msg.sender).transfer(remainingAmount);
+        payable(msg.sender).transfer(messageValue - actualRepaymentAmount);
         emit EventRepayment(msg.sender, who, minerId, actualRepaymentAmount);
     }
 
@@ -408,7 +407,7 @@ contract SPexBeneficiary {
         for (uint i=0; i<whoList.length; i++) {
             _preRepayment(payable(whoList[i]), minerIdList[i], amountList[i]);
             
-            uint actualRepaid = amountList[i] - _reduceAmount(payable(whoList[i]), minerIdList[i], amountList[i]);
+            uint actualRepaid = _reduceAmount(payable(whoList[i]), minerIdList[i], amountList[i]);
             totalRepaid += actualRepaid;
             actualRepaymentAmounts[i] = actualRepaid;
 
