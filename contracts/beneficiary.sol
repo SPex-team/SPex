@@ -288,8 +288,11 @@ contract SPexBeneficiary {
         _updateLoanOwedAmount(msg.sender, minerId);
         Loan storage sellerLoan = _loans[who][minerId];
         Loan storage buyerLoan = _loans[msg.sender][minerId];
+        uint principleChange = sellerLoan.principleAmount * sellItem.amount / sellerLoan.lastAmount;
         sellerLoan.lastAmount -= sellItem.amount;
+        sellerLoan.principleAmount -= principleChange;
         buyerLoan.lastAmount += sellItem.amount;
+        buyerLoan.principleAmount += principleChange;
         delete _sell[who][minerId];
         emit EventBuyLoan(msg.sender, who, minerId, sellItem.amount, sellItem.price);
     }
