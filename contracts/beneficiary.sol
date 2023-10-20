@@ -361,7 +361,7 @@ contract SPexBeneficiary {
         loan.lastUpdateTime = blockTimestamp;
     }
 
-    function withdrawRepayment(address payable bondOwner, CommonTypes.FilActorId minerId, uint amount) public returns (uint actuallRepaymentAmount) {
+    function withdrawRepayment(address payable bondOwner, CommonTypes.FilActorId minerId, uint amount) public returns (uint actualRepaymentAmount) {
         Miner storage miner = _miners[minerId];
         require(msg.sender == bondOwner || msg.sender == miner.delegator, "You are not borrower or delegator of the miner");
 
@@ -395,17 +395,29 @@ contract SPexBeneficiary {
         actualRepaymentAmount = messageValue - remainingAmount;
         _transferRepayment(who, actualRepaymentAmount);
         payable(msg.sender).transfer(remainingAmount);
-        emit EventRepayment(msg.sender, who, minerId, messageValue);
+        emit EventRepayment(msg.sender, who, minerId, actualRepaymentAmount);
     }
 
-    function batchRepayment(address[] memory whoList, CommonTypes.FilActorId[] memory minerIdList, uint[] memory amountList) external {
+    function batchRepayment(address[] memory whoList, CommonTypes.FilActorId[] memory minerIdList, uint[] memory amountList) external payable returns (uint[] memory actualRepaymentAmounts) {
         require(whoList.length == minerIdList.length, "The lengths of whoList and MinerIdList must be equal");
         require(whoList.length == amountList.length, "The lengths of whoList and amountList must be equal");
+        
+        uint totalRepaid;
+        actualRepaymentAmounts = new uint[](whoList.length);
+        
         for (uint i=0; i<whoList.length; i++) {
             _preRepayment(payable(whoList[i]), minerIdList[i], amountList[i]);
-            _transferRepayment(payable(whoList[i]), amountList[i]);
-            _reduceAmount(payable(whoList[i]), minerIdList[i], amountList[i]);
+            
+            uint actualRepaid = amountList[i] - _reduceAmount(payable(whoList[i]), minerIdList[i], amountList[i]);
+            totalRepaid += actualRepaid;
+            actualRepaymentAmounts[i] = actualRepaid;
+
+            _transferRepayment(payable(whoList[i]), actualRepaid);
+            emit EventRepayment(msg.sender, whoList[i], minerIdList[i], actualRepaid);
         }
+
+        require(totalRepaid <= msg.value, "Insufficient funds provided");
+        payable(msg.sender).transfer(msg.value - totalRepaid);
     }
 
     function getCurrentTotalDebtAmount(CommonTypes.FilActorId minerId) external view returns(uint totalDebt, uint principal) {
