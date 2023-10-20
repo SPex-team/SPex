@@ -361,13 +361,13 @@ contract SPexBeneficiary {
         loan.lastUpdateTime = blockTimestamp;
     }
 
-    function withdrawRepayment(address payable bondOwner, CommonTypes.FilActorId minerId, uint amount) public {
+    function withdrawRepayment(address payable bondOwner, CommonTypes.FilActorId minerId, uint amount) public returns (uint actuallRepaymentAmount) {
         Miner storage miner = _miners[minerId];
         require(msg.sender == bondOwner || msg.sender == miner.delegator, "You are not borrower or delegator of the miner");
 
         _preRepayment(bondOwner, minerId, amount);
 
-        uint actualRepaymentAmount = amount - _reduceAmount(bondOwner, minerId, amount);
+        actualRepaymentAmount = amount - _reduceAmount(bondOwner, minerId, amount);
 
         CommonTypes.BigInt memory amountBigInt = Common.uint2BigInt(actualRepaymentAmount);
         CommonTypes.BigInt memory actuallyAmountBitInt = MinerAPI.withdrawBalance(minerId, amountBigInt);
@@ -380,19 +380,20 @@ contract SPexBeneficiary {
         emit EventWithdrawRepayment(msg.sender, bondOwner, minerId, amount);
     }
 
-    function batchWithdrawRepayment(address[] memory whoList, CommonTypes.FilActorId[] memory minerIdList, uint[] memory amountList) external {
+    function batchWithdrawRepayment(address[] memory whoList, CommonTypes.FilActorId[] memory minerIdList, uint[] memory amountList) external returns (uint actuallRepaymentAmount) {
         require(whoList.length == minerIdList.length, "The lengths of whoList and MinerIdList must be equal");
         require(whoList.length == amountList.length, "The lengths of whoList and amountList must be equal");
         for (uint i=0; i < whoList.length; i++) {
-            withdrawRepayment(payable(whoList[i]), minerIdList[i], amountList[i]);
+            actuallRepaymentAmount += withdrawRepayment(payable(whoList[i]), minerIdList[i], amountList[i]);
         }
     }
 
-    function repayment(address who, CommonTypes.FilActorId minerId) external payable {
+    function repayment(address who, CommonTypes.FilActorId minerId) external payable returns (uint actualRepaymentAmount) {
         uint messageValue = msg.value;
         _preRepayment(who, minerId, messageValue);
         uint remainingAmount = _reduceAmount(who, minerId, messageValue);
-        _transferRepayment(who, messageValue - remainingAmount);
+        actualRepaymentAmount = messageValue - remainingAmount;
+        _transferRepayment(who, actualRepaymentAmount);
         payable(msg.sender).transfer(remainingAmount);
         emit EventRepayment(msg.sender, who, minerId, messageValue);
     }
