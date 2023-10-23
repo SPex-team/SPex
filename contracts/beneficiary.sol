@@ -242,8 +242,9 @@ contract SPexBeneficiary {
         changeMinerDisabled(minerId, disabled);
     }
 
-    function buyMinerDebt(CommonTypes.FilActorId minerId) external payable {
+    function buyMinerDebt(CommonTypes.FilActorId minerId, uint expectedInterestRate) external payable {
         Miner storage miner = _miners[minerId];
+        require(expectedInterestRate <= miner.loanInterestRate, "Interest rate lower than expected");
         require(miner.disabled == false, "THe miner already disabled");
         require(msg.value >= _minLendAmount, "Lend amount smaller than minimum allowed");
         _updateOwedAmounts(msg.sender, minerId);
