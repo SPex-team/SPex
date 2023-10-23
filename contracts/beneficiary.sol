@@ -391,6 +391,18 @@ contract SPexBeneficiary {
         }
     }
 
+    function batchWithdrawRepaymentWithTotalAmount(address[] memory whoList, CommonTypes.FilActorId[] memory minerIdList, uint totalAmount) external returns (uint actualRepaymentAmount) {
+        require(whoList.length == minerIdList.length, "The lengths of whoList and MinerIdList must be equal");
+
+        uint amountRemaining = totalAmount;
+        for (uint i=0; i < whoList.length; i++) {
+            uint actualRepaid = withdrawRepayment(payable(whoList[i]), minerIdList[i], amountRemaining);
+            amountRemaining -= actualRepaid;
+            actualRepaymentAmount += actualRepaid;
+            if (amountRemaining == 0) break;
+        }
+    }
+
     function repayment(address who, CommonTypes.FilActorId minerId) external payable returns (uint actualRepaymentAmount) {
         uint messageValue = msg.value;
         _preRepayment(who, minerId, messageValue);
@@ -420,6 +432,38 @@ contract SPexBeneficiary {
 
         require(totalRepaid <= msg.value, "Insufficient funds provided");
         payable(msg.sender).transfer(msg.value - totalRepaid);
+    }
+
+    function batchRepaymentWithTotalAmount(address[] memory whoList, CommonTypes.FilActorId[] memory minerIdList) external payable returns (uint[] memory actualRepaymentAmounts) {
+        require(whoList.length == minerIdList.length, "The lengths of whoList and MinerIdList must be equal");
+        
+        uint amountRemaining = msg.value;
+        actualRepaymentAmounts = new uint[](whoList.length);
+        
+        for (uint i=0; i<whoList.length; i++) {
+            address payable lender = payable(whoList[i]);
+            CommonTypes.FilActorId minerId = minerIdList[i];
+
+            _updateOwedAmounts(lender, minerId);
+            
+            uint actualRepaid = _reduceAmount(lender, minerId, amountRemaining);
+            amountRemaining -= actualRepaid;
+            actualRepaymentAmounts[i] = actualRepaid;
+
+            Loan storage loan = _loans[lender][minerId];
+            SellItem storage sellItem =  _sell[lender][minerId];
+            if (sellItem.amount > 0 && actualRepaid > loan.lastAmount - sellItem.amount) {
+                delete _sell[lender][minerId];
+                emit EventCancelSellLoan(msg.sender, minerId);
+            }
+
+            _transferRepayment(lender, actualRepaid);
+            emit EventRepayment(msg.sender, lender, minerId, actualRepaid);
+
+            if(amountRemaining == 0) break;
+        }
+
+        payable(msg.sender).transfer(amountRemaining);
     }
 
     function getCurrentTotalDebtAmount(CommonTypes.FilActorId minerId) external view returns(uint totalDebt, uint principal) {
