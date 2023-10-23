@@ -73,6 +73,7 @@ contract SPexBeneficiary {
     address public _foundation;
     uint public _feeRate;
     uint public _maxDebtRate;
+    uint public _minLendAmount;
 
     uint constant public MAX_FEE_RATE = 10000;
     uint constant public RATE_BASE = 1000000;
@@ -242,9 +243,10 @@ contract SPexBeneficiary {
     }
 
     function buyMinerDebt(CommonTypes.FilActorId minerId) external payable {
-        _updateOwedAmounts(msg.sender, minerId);
         Miner storage miner = _miners[minerId];
         require(miner.disabled == false, "THe miner already disabled");
+        require(msg.value >= _minLendAmount, "Lend amount smaller than minimum allowed");
+        _updateOwedAmounts(msg.sender, minerId);
         require((miner.lastDebtAmount + msg.value) <= miner.maxDebtAmount, "The sum of debted amount must less than or equal to maxDebtAmount");
 
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(minerId);
@@ -486,6 +488,10 @@ contract SPexBeneficiary {
     function changeFeeRate(uint newFeeRate) external onlyFoundation {
         require(newFeeRate <= MAX_FEE_RATE, "The fee rate must less than or equal MAX_FEE_RATE");
         _feeRate = newFeeRate;
+    }
+
+    function changeMinLendAmount(uint newMinLendAmount) external onlyFoundation {
+        _minLendAmount = newMinLendAmount;
     }
 
     function withdraw(address payable to, uint amount) external payable onlyFoundation {
