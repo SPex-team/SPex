@@ -125,7 +125,7 @@ contract SPexBeneficiary {
         uint64 senderUint64 = PrecompilesAPI.resolveEthAddress(msg.sender);
         // if (senderUint64 != ownerUint64) {
         //     _validateTimestamp(timestamp);
-        //     Validator.validateOwnerSign(sign, minerId, ownerUint64, timestamp);
+        //     Validator.validateOwnerSignForBeneficiary(sign, minerId, ownerUint64, timestamp);
         // }
 
         _checkMaxDebtAmount(minerId, maxDebtAmount);
