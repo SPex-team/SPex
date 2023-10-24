@@ -78,32 +78,32 @@ contract SPexBeneficiary {
     int64 constant public REQUIRED_EXPIRATION = type(int64).max;
 
     constructor(address foundation, uint maxDebtRate) {
-        require(foundation != address(0), "The foundation address cannot be set zero address");
+        require(foundation != address(0), "Foundation address cannot be zero address");
         _foundation = foundation;
         _maxDebtRate = maxDebtRate;
     }
 
     function _validateTimestamp(uint timestamp) internal {
-        require(timestamp < (block.timestamp + 120) && timestamp > (block.timestamp - 1800), "The timestamp is expired");
-        require(timestamp > _lastTimestampMap[msg.sender], "The timestamp is invalid");
+        require(timestamp < (block.timestamp + 120) && timestamp > (block.timestamp - 1800), "Provided timestamp expired");
+        require(timestamp > _lastTimestampMap[msg.sender], "Provided timestamp must be bigger than last one provided");
         _lastTimestampMap[msg.sender] = timestamp;
     }
 
     modifier onlyMinerDelegator(CommonTypes.FilActorId minerId) {
-        require(_miners[minerId].delegator == msg.sender, "You are not the delegator of the miner");
+        require(_miners[minerId].delegator == msg.sender, "Only miner's delegator allowed");
         _;
     }
 
     function _checkMaxDebtAmount(CommonTypes.FilActorId minerId, uint maxDebtAmount) internal view {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(minerId);
         uint minerBalance = FilAddress.toAddress(minerIdUint64).balance;
-        require(maxDebtAmount <= (minerBalance * _maxDebtRate / RATE_BASE), "The maxDebtAmount exceeds the maximum dept amount of the miner");
+        require(maxDebtAmount <= (minerBalance * _maxDebtRate / RATE_BASE), "Specified max debt amount exceeds max allowed by miner balance");
     }
 
     function _prePledgeBeneficiaryToSpex(CommonTypes.FilActorId minerId, bytes memory sign, uint timestamp, uint maxDebtAmount) internal {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_miners[minerId].minerId);
 
-        require(minerIdUint64 == 0,  "The beneficiary of miner is already transferred into SPex");
+        require(minerIdUint64 == 0,  "Beneficiary already pledged to SPex loan");
         delete _releasedMinerDelegators[minerId];
 
         MinerTypes.GetOwnerReturn memory ownerReturn = MinerAPI.getOwner(minerId);
@@ -129,7 +129,7 @@ contract SPexBeneficiary {
         require(quota == REQUIRED_QUOTA, "Invalid quota");
         int64 expiration = CommonTypes.ChainEpoch.unwrap(proposedBeneficiaryRet.new_expiration);
         uint64 uExpiration = uint64(expiration);
-        require(expiration == REQUIRED_EXPIRATION && uExpiration > block.number, "Invalid expiration");
+        require(expiration == REQUIRED_EXPIRATION && uExpiration > block.number, "Invalid expiration time");
 
         // change beneficiary to contract
         MinerTypes.ChangeBeneficiaryParams memory changeBeneficiaryParams = MinerTypes.ChangeBeneficiaryParams({
@@ -156,8 +156,8 @@ contract SPexBeneficiary {
 
     function releaseBeneficiary(CommonTypes.FilActorId minerId, CommonTypes.FilAddress memory newBeneficiary) external onlyMinerDelegator(minerId) {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_miners[minerId].minerId);
-        require(minerIdUint64 != 0,  "The beneficiary of miner is not transferred into SPex");  //TODO: Need to remove?
-        require(_miners[minerId].lastDebtAmount == 0 , "The miner is not paid off");
+        require(minerIdUint64 != 0,  "Beneficiary of miner is not pledged to SPex");
+        require(_miners[minerId].lastDebtAmount == 0 , "Debt not fully paid off");
         MinerTypes.ChangeBeneficiaryParams memory changeBeneficiaryParams = MinerTypes.ChangeBeneficiaryParams({
                 new_beneficiary: newBeneficiary,
                 new_quota: CommonTypes.BigInt(hex"00", false),
@@ -170,7 +170,7 @@ contract SPexBeneficiary {
     }
 
     function releaseBeneficiaryAgain(CommonTypes.FilActorId minerId, CommonTypes.FilAddress memory newBeneficiary) external {
-        require(_releasedMinerDelegators[minerId] != address(0), "The miner has not been released");
+        require(_releasedMinerDelegators[minerId] != address(0), "The miner's beneficiary has not been released");
         require(msg.sender == _releasedMinerDelegators[minerId], "You are not the delegator of the miner");
         MinerTypes.ChangeBeneficiaryParams memory changeBeneficiaryParams = MinerTypes.ChangeBeneficiaryParams({
                 new_beneficiary: newBeneficiary,
@@ -189,7 +189,7 @@ contract SPexBeneficiary {
     function changeMinerMaxDebtAmount(CommonTypes.FilActorId minerId, uint newMaxDebtAmount) public onlyMinerDelegator(minerId) {
         Miner storage miner = _miners[minerId];
         uint currentDebtAmount = _updateMinerDebtAmount(minerId);
-        require(newMaxDebtAmount >= currentDebtAmount, "New debt amount smaller than current amount owed");
+        require(newMaxDebtAmount >= currentDebtAmount, "New max debt amount smaller than current amount owed");
         _checkMaxDebtAmount(minerId, newMaxDebtAmount);
         miner.maxDebtAmount = newMaxDebtAmount;
         emit EventChangeMinerMaxDebtAmount(minerId, newMaxDebtAmount);
@@ -197,7 +197,7 @@ contract SPexBeneficiary {
 
     function changeMinerLoanInterestRate(CommonTypes.FilActorId minerId, uint newLoanInterestRate) public onlyMinerDelegator(minerId) {
         Miner storage miner = _miners[minerId];
-        require(miner.lastDebtAmount == 0, "You must repayment all your depts before you can change loanInterestRate");
+        require(miner.lastDebtAmount == 0, "Debt not fully paid off");
         miner.loanInterestRate = newLoanInterestRate;
         emit EventChangeMinerLoanInterestRate(minerId, newLoanInterestRate);
     }
@@ -230,23 +230,23 @@ contract SPexBeneficiary {
     function lendToMiner(CommonTypes.FilActorId minerId, uint expectedInterestRate) external payable {
         Miner storage miner = _miners[minerId];
         require(expectedInterestRate <= miner.loanInterestRate, "Interest rate lower than expected");
-        require(miner.disabled == false, "THe miner already disabled");
+        require(miner.disabled == false, "Lending for this miner is disabled");
         require(msg.value >= _minLendAmount, "Lend amount smaller than minimum allowed");
         _updateOwedAmounts(msg.sender, minerId);
-        require((miner.lastDebtAmount + msg.value) <= miner.maxDebtAmount, "The sum of debted amount must less than or equal to maxDebtAmount");
+        require((miner.lastDebtAmount + msg.value) <= miner.maxDebtAmount, "Debt amount after lend large than allowed by miner");
 
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(minerId);
         uint minerBalance = FilAddress.toAddress(minerIdUint64).balance;
-        require((miner.lastDebtAmount + msg.value) <= (minerBalance * _maxDebtRate / RATE_BASE), "The amount must less than or equal than remaining amount");
+        require((miner.lastDebtAmount + msg.value) <= (minerBalance * _maxDebtRate / RATE_BASE), "Debt rate of miner after lend larger than allowed");
         _increaseOwedAmounts(msg.sender, minerId, msg.value);
         payable(miner.receiveAddress).transfer(msg.value);
         emit EventLendToMiner(msg.sender, minerId, msg.value);
     }
 
     function sellLoan(CommonTypes.FilActorId minerId, uint amount, uint price) public {
-        require(_sales[msg.sender][minerId].amount == 0, "You already have a pending order for this miner");
+        require(_sales[msg.sender][minerId].amount == 0, "Sale already exists");
         uint newAmount = _updateLenderOwedAmount(msg.sender, minerId);
-        require(amount <= newAmount, "Insufficient amount");
+        require(amount <= newAmount, "Insufficient owed amount");
         SellItem memory sellItem = SellItem({
             amount: amount,
             price: price
@@ -262,15 +262,15 @@ contract SPexBeneficiary {
 
     function cancelLoanSale(CommonTypes.FilActorId minerId) public {
         SellItem storage sellItem = _sales[msg.sender][minerId];
-        require(sellItem.amount > 0, "You don't have a pendding order for this miner");
+        require(sellItem.amount > 0, "Sale don't exist");
         delete _sales[msg.sender][minerId];
         emit EventCancelSellLoan(msg.sender, minerId);
     }
 
     function buyLoan(address payable seller, CommonTypes.FilActorId minerId) external payable {
         SellItem storage sellItem = _sales[seller][minerId];
-        require(sellItem.amount != 0, "The user is not selling loan of this miner");
-        require(msg.value == sellItem.price, "The pay amount is not equal sale price");
+        require(sellItem.amount != 0, "Sale don't exist");
+        require(msg.value == sellItem.price, "Paid amount not equal to sale price");
         payable(seller).transfer(sellItem.price);
         _updateLenderOwedAmount(seller, minerId);
         _updateLenderOwedAmount(msg.sender, minerId);
@@ -298,7 +298,7 @@ contract SPexBeneficiary {
 
     function withdrawRepayment(address payable lender, CommonTypes.FilActorId minerId, uint amount) public returns (uint actualRepaymentAmount) {
         Miner storage miner = _miners[minerId];
-        require(msg.sender == lender || msg.sender == miner.delegator, "You are not borrower or delegator of the miner");
+        require(msg.sender == lender || msg.sender == miner.delegator, "You are not lender or delegator of the miner");
 
         _preRepayment(lender, minerId, amount);
 
@@ -306,9 +306,9 @@ contract SPexBeneficiary {
 
         CommonTypes.BigInt memory amountBigInt = Common.uint2BigInt(actualRepaymentAmount);
         CommonTypes.BigInt memory actuallyAmountBitInt = MinerAPI.withdrawBalance(minerId, amountBigInt);
-        require(actuallyAmountBitInt.neg == false, "Failed withdraw balance, Actually withdraw amount is negative");
+        require(actuallyAmountBitInt.neg == false, "Failed withdraw balance; actual withdraw amount is negative");
         uint withdrawnAmount = Common.bigInt2Uint(actuallyAmountBitInt);
-        require(withdrawnAmount == actualRepaymentAmount, "Withdrawn amount is not equal amount");
+        require(withdrawnAmount == actualRepaymentAmount, "Withdrawn amount not equal to repaid amount");
 
         _transferRepayment(lender, actualRepaymentAmount);
 
@@ -469,12 +469,12 @@ contract SPexBeneficiary {
     }
 
     modifier onlyFoundation {
-        require(msg.sender == _foundation, "You are not the foundation");
+        require(msg.sender == _foundation, "Only foundation allowed");
         _;
     }
 
     function changeFoundation(address foundation) external onlyFoundation {
-        require(foundation != address(0), "The foundation cannot be set to zero address");
+        require(foundation != address(0), "Foundation cannot be set to zero address");
         _foundation = foundation;
     }
 
@@ -483,7 +483,7 @@ contract SPexBeneficiary {
     }
 
     function changeFeeRate(uint newFeeRate) external onlyFoundation {
-        require(newFeeRate <= MAX_FEE_RATE, "The fee rate must less than or equal MAX_FEE_RATE");
+        require(newFeeRate <= MAX_FEE_RATE, "Fee rate must less than or equal to MAX_FEE_RATE");
         _feeRate = newFeeRate;
     }
 
