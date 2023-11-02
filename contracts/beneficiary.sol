@@ -244,15 +244,15 @@ contract SPexBeneficiary {
     }
 
     function sellLoan(CommonTypes.FilActorId minerId, uint ceilingAmount, uint pricePerFil) public {
-        require(_sales[msg.sender][minerId].amount == 0, "Sale already exists");
+        require(_sales[msg.sender][minerId].amountRemaining == 0, "Sale already exists");
         uint newAmount = _updateLenderOwedAmount(msg.sender, minerId);
-        require(amount <= newAmount, "Insufficient owed amount");
+        require(ceilingAmount <= newAmount, "Insufficient owed amount");
         SellItem memory sellItem = SellItem({
-            amountRemaining: amount,
-            pricePerFil: price
+            amountRemaining: ceilingAmount,
+            pricePerFil: pricePerFil
         });
         _sales[msg.sender][minerId] = sellItem;
-        emit EventSellLoan(msg.sender, minerId, amount, price);
+        emit EventSellLoan(msg.sender, minerId, ceilingAmount, pricePerFil);
     }
 
     function modifyLoanSale(CommonTypes.FilActorId minerId, uint amount, uint price) external {
@@ -292,12 +292,6 @@ contract SPexBeneficiary {
 
     function _preRepayment(address lender, CommonTypes.FilActorId minerId, uint amount) internal {
         _updateOwedAmounts(lender, minerId);
-        Loan storage loan = _loans[lender][minerId];
-        SellItem storage sellItem =  _sales[lender][minerId];
-        
-        if (sellItem.amountRemaining > 0) {
-            sellItem.amountRemaining = amount >= sellItem.amountRemaining ? 0 : sellItem.amountRemaining - amount;
-        }
     }
 
     function withdrawRepayment(address payable lender, CommonTypes.FilActorId minerId, uint amount) public returns (uint actualRepaymentAmount) {
@@ -307,6 +301,11 @@ contract SPexBeneficiary {
         _preRepayment(lender, minerId, amount);
 
         actualRepaymentAmount = _reduceOwedAmounts(lender, minerId, amount);
+
+        SellItem storage sellItem =  _sales[lender][minerId];
+        if (sellItem.amountRemaining > 0) {
+            sellItem.amountRemaining = actualRepaymentAmount >= sellItem.amountRemaining ? 0 : sellItem.amountRemaining - actualRepaymentAmount;
+        }
 
         CommonTypes.BigInt memory amountBigInt = Common.uint2BigInt(actualRepaymentAmount);
         CommonTypes.BigInt memory actuallyAmountBitInt = MinerAPI.withdrawBalance(minerId, amountBigInt);
@@ -343,6 +342,10 @@ contract SPexBeneficiary {
         uint messageValue = msg.value;
         _preRepayment(lender, minerId, messageValue);
         actualRepaymentAmount = _reduceOwedAmounts(lender, minerId, messageValue);
+        SellItem storage sellItem =  _sales[lender][minerId];
+        if (sellItem.amountRemaining > 0) {
+            sellItem.amountRemaining = actualRepaymentAmount >= sellItem.amountRemaining ? 0 : sellItem.amountRemaining - actualRepaymentAmount;
+        }
         _transferRepayment(lender, actualRepaymentAmount);
         payable(msg.sender).transfer(messageValue - actualRepaymentAmount);
         emit EventRepayment(msg.sender, lender, minerId, actualRepaymentAmount);
@@ -361,6 +364,11 @@ contract SPexBeneficiary {
             uint actualRepaid = _reduceOwedAmounts(payable(lenderList[i]), minerIdList[i], amountList[i]);
             totalRepaid += actualRepaid;
             actualRepaymentAmounts[i] = actualRepaid;
+
+            SellItem storage sellItem =  _sales[lenderList[i]][minerIdList[i]];
+            if (sellItem.amountRemaining > 0) {
+                sellItem.amountRemaining = actualRepaid >= sellItem.amountRemaining ? 0 : sellItem.amountRemaining - actualRepaid;
+            }
 
             _transferRepayment(payable(lenderList[i]), actualRepaid);
             emit EventRepayment(msg.sender, lenderList[i], minerIdList[i], actualRepaid);
@@ -386,10 +394,9 @@ contract SPexBeneficiary {
             amountRemaining -= actualRepaid;
             actualRepaymentAmounts[i] = actualRepaid;
 
-            Loan storage loan = _loans[lender][minerId];
             SellItem storage sellItem =  _sales[lender][minerId];
             if (sellItem.amountRemaining > 0) {
-            sellItem.amountRemaining = amount >= sellItem.amountRemaining ? 0 : sellItem.amountRemaining - amount;
+                sellItem.amountRemaining = actualRepaid >= sellItem.amountRemaining ? 0 : sellItem.amountRemaining - actualRepaid;
             }
 
             _transferRepayment(lender, actualRepaid);
