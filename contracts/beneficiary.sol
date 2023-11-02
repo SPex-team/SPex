@@ -55,8 +55,8 @@ contract SPexBeneficiary {
     }
 
     struct SellItem {
-        uint amount;
-        uint price;
+        uint amountRemaining;
+        uint pricePerFil;
     }
 
     mapping(CommonTypes.FilActorId => Miner) public _miners;
@@ -243,13 +243,13 @@ contract SPexBeneficiary {
         emit EventLendToMiner(msg.sender, minerId, msg.value);
     }
 
-    function sellLoan(CommonTypes.FilActorId minerId, uint amount, uint price) public {
+    function sellLoan(CommonTypes.FilActorId minerId, uint ceilingAmount, uint pricePerFil) public {
         require(_sales[msg.sender][minerId].amount == 0, "Sale already exists");
         uint newAmount = _updateLenderOwedAmount(msg.sender, minerId);
         require(amount <= newAmount, "Insufficient owed amount");
         SellItem memory sellItem = SellItem({
-            amount: amount,
-            price: price
+            amountRemaining: amount,
+            pricePerFil: price
         });
         _sales[msg.sender][minerId] = sellItem;
         emit EventSellLoan(msg.sender, minerId, amount, price);
@@ -262,27 +262,32 @@ contract SPexBeneficiary {
 
     function cancelLoanSale(CommonTypes.FilActorId minerId) public {
         SellItem storage sellItem = _sales[msg.sender][minerId];
-        require(sellItem.amount > 0, "Sale don't exist");
+        require(sellItem.amountRemaining > 0, "Sale don't exist");
         delete _sales[msg.sender][minerId];
         emit EventCancelSellLoan(msg.sender, minerId);
     }
 
-    function buyLoan(address payable seller, CommonTypes.FilActorId minerId) external payable {
+    function buyLoan(address payable seller, CommonTypes.FilActorId minerId, uint buyAmount) external payable {
         SellItem storage sellItem = _sales[seller][minerId];
-        require(sellItem.amount != 0, "Sale don't exist");
-        require(msg.value == sellItem.price, "Paid amount not equal to sale price");
-        payable(seller).transfer(sellItem.price);
+        require(sellItem.amountRemaining != 0, "Sale don't exist");
+        require(buyAmount <= sellItem.amountRemaining, "buyAmount larger than amount on sale");
+        uint requiredPayment = sellItem.pricePerFil * buyAmount / 1 ether;
+        require(msg.value == requiredPayment, "Paid amount not equal to sale price");
+        payable(seller).transfer(requiredPayment);
+
         _updateLenderOwedAmount(seller, minerId);
         _updateLenderOwedAmount(msg.sender, minerId);
+
         Loan storage sellerLoan = _loans[seller][minerId];
         Loan storage buyerLoan = _loans[msg.sender][minerId];
-        uint principleChange = (sellerLoan.principleAmount * sellItem.amount + (sellerLoan.lastAmount - 1)) / sellerLoan.lastAmount;  //Round up
-        sellerLoan.lastAmount -= sellItem.amount;
+        uint principleChange = (sellerLoan.principleAmount * buyAmount + (sellerLoan.lastAmount - 1)) / sellerLoan.lastAmount;  //Round up
+        sellerLoan.lastAmount -= buyAmount;
         sellerLoan.principleAmount -= principleChange;
-        buyerLoan.lastAmount += sellItem.amount;
+        buyerLoan.lastAmount += buyAmount;
         buyerLoan.principleAmount += principleChange;
-        delete _sales[seller][minerId];
-        emit EventBuyLoan(msg.sender, seller, minerId, sellItem.amount, sellItem.price);
+        sellItem.amountRemaining -= buyAmount;
+
+        emit EventBuyLoan(msg.sender, seller, minerId, buyAmount, sellItem.pricePerFil);
     }
 
     function _preRepayment(address lender, CommonTypes.FilActorId minerId, uint amount) internal {
@@ -290,9 +295,8 @@ contract SPexBeneficiary {
         Loan storage loan = _loans[lender][minerId];
         SellItem storage sellItem =  _sales[lender][minerId];
         
-        if (sellItem.amount > 0 && amount > loan.lastAmount - sellItem.amount) {
-            delete _sales[lender][minerId];
-            emit EventCancelSellLoan(msg.sender, minerId);
+        if (sellItem.amountRemaining > 0) {
+            sellItem.amountRemaining = amount >= sellItem.amountRemaining ? 0 : sellItem.amountRemaining - amount;
         }
     }
 
@@ -384,9 +388,8 @@ contract SPexBeneficiary {
 
             Loan storage loan = _loans[lender][minerId];
             SellItem storage sellItem =  _sales[lender][minerId];
-            if (sellItem.amount > 0 && actualRepaid > loan.lastAmount - sellItem.amount) {
-                delete _sales[lender][minerId];
-                emit EventCancelSellLoan(msg.sender, minerId);
+            if (sellItem.amountRemaining > 0) {
+            sellItem.amountRemaining = amount >= sellItem.amountRemaining ? 0 : sellItem.amountRemaining - amount;
             }
 
             _transferRepayment(lender, actualRepaid);
