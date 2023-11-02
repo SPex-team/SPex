@@ -276,7 +276,7 @@ contract SPexBeneficiary {
         _updateLenderOwedAmount(msg.sender, minerId);
         Loan storage sellerLoan = _loans[seller][minerId];
         Loan storage buyerLoan = _loans[msg.sender][minerId];
-        uint principleChange = sellerLoan.principleAmount * sellItem.amount + (sellerLoan.lastAmount - 1) / sellerLoan.lastAmount;  //Round up
+        uint principleChange = (sellerLoan.principleAmount * sellItem.amount + (sellerLoan.lastAmount - 1)) / sellerLoan.lastAmount;  //Round up
         sellerLoan.lastAmount -= sellItem.amount;
         sellerLoan.principleAmount -= principleChange;
         buyerLoan.lastAmount += sellItem.amount;
