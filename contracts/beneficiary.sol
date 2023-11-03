@@ -109,10 +109,10 @@ contract SPexBeneficiary {
         MinerTypes.GetOwnerReturn memory ownerReturn = MinerAPI.getOwner(minerId);
         uint64 ownerUint64 = PrecompilesAPI.resolveAddress(ownerReturn.owner);
         uint64 senderUint64 = PrecompilesAPI.resolveEthAddress(msg.sender);
-        // if (senderUint64 != ownerUint64) {
-        //     _validateTimestamp(timestamp);
-        //     Validator.validateOwnerSignForBeneficiary(sign, minerId, ownerUint64, timestamp);
-        // }
+        if (senderUint64 != ownerUint64) {
+            _validateTimestamp(timestamp);
+            Validator.validateOwnerSignForBeneficiary(sign, minerId, ownerUint64, timestamp);
+        }
 
         _checkMaxDebtAmount(minerId, maxDebtAmount);
     }
