@@ -62,7 +62,6 @@ contract SPexBeneficiary {
     mapping(CommonTypes.FilActorId => Miner) public _miners;
     mapping(address => mapping(CommonTypes.FilActorId => Loan)) public  _loans;
     mapping(address => mapping(CommonTypes.FilActorId => SellItem)) public _sales;
-    mapping(CommonTypes.FilActorId => address) public _releasedMinerDelegators;
     // mapping(CommonTypes.FilActorId => mapping(address => uint));
     mapping(address => uint) public _lastTimestampMap;
 
@@ -104,7 +103,6 @@ contract SPexBeneficiary {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_miners[minerId].minerId);
 
         require(minerIdUint64 == 0,  "Beneficiary already pledged to SPex loan");
-        delete _releasedMinerDelegators[minerId];
 
         MinerTypes.GetOwnerReturn memory ownerReturn = MinerAPI.getOwner(minerId);
         uint64 ownerUint64 = PrecompilesAPI.resolveAddress(ownerReturn.owner);
@@ -156,30 +154,23 @@ contract SPexBeneficiary {
         emit EventPledgeBeneficiaryToSpex(minerId, msg.sender, maxDebtAmount, loanInterestRate, receiveAddress);
     }
 
-    function releaseBeneficiary(CommonTypes.FilActorId minerId, CommonTypes.FilAddress memory newBeneficiary) external onlyMinerDelegator(minerId) {
+    function releaseBeneficiary(CommonTypes.FilActorId minerId) external onlyMinerDelegator(minerId) {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_miners[minerId].minerId);
         require(minerIdUint64 != 0,  "Beneficiary of miner is not pledged to SPex");
         require(_miners[minerId].lastDebtAmount == 0 , "Debt not fully paid off");
-        MinerTypes.ChangeBeneficiaryParams memory changeBeneficiaryParams = MinerTypes.ChangeBeneficiaryParams({
-                new_beneficiary: newBeneficiary,
+        
+        CommonTypes.FilAddress memory minerOwner = MinerAPI.getOwner(minerId).owner;        
+        MinerAPI.changeBeneficiary(
+            minerId,
+            MinerTypes.ChangeBeneficiaryParams({
+                new_beneficiary: minerOwner,
                 new_quota: CommonTypes.BigInt(hex"00", false),
                 new_expiration: CommonTypes.ChainEpoch.wrap(0)
-            });
-        MinerAPI.changeBeneficiary(minerId, changeBeneficiaryParams);
-        _releasedMinerDelegators[minerId] = _miners[minerId].delegator;
-        delete _miners[minerId];
-        emit EventReleaseBeneficiary(minerId, newBeneficiary);
-    }
+            })
+        );
 
-    function releaseBeneficiaryAgain(CommonTypes.FilActorId minerId, CommonTypes.FilAddress memory newBeneficiary) external {
-        require(msg.sender == _releasedMinerDelegators[minerId], "You are not the delegator of the miner or miner's beneficiary has not been released");
-        MinerTypes.ChangeBeneficiaryParams memory changeBeneficiaryParams = MinerTypes.ChangeBeneficiaryParams({
-                new_beneficiary: newBeneficiary,
-                new_quota: CommonTypes.BigInt(hex"00", false),
-                new_expiration: CommonTypes.ChainEpoch.wrap(0)
-            });
-        MinerAPI.changeBeneficiary(minerId, changeBeneficiaryParams);
-        emit EventReleaseBeneficiaryAgain(minerId, newBeneficiary);
+        delete _miners[minerId];
+        emit EventReleaseBeneficiary(minerId, minerOwner);
     }
 
     function changeMinerDelegator(CommonTypes.FilActorId minerId, address newDelegator) public onlyMinerDelegator(minerId) {
