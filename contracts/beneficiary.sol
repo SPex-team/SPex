@@ -76,10 +76,13 @@ contract SPexBeneficiary {
     uint constant public REQUIRED_QUOTA = 1e68 - 1e18;
     int64 constant public REQUIRED_EXPIRATION = type(int64).max;
 
-    constructor(address foundation, uint maxDebtRate) {
+    constructor(address foundation, uint maxDebtRate, uint feeRate, uint minLendAmount) {
         require(foundation != address(0), "Foundation address cannot be zero address");
+        require(feeRate <= MAX_FEE_RATE, "Fee rate must less than or equal to MAX_FEE_RATE");
         _foundation = foundation;
         _maxDebtRate = maxDebtRate;
+        _feeRate = feeRate;
+        _minLendAmount = minLendAmount;
     }
 
     function _validateTimestamp(uint timestamp) internal {
