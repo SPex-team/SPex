@@ -211,7 +211,7 @@ contract SPexBeneficiary {
         uint newLoanInterestRate,
         address newReceiveAddress,
         bool disabled
-    ) external onlyMinerDelegator(minerId) {
+    ) external {    //No onlyMinerDelegator(minerId) modifier because the functions called have this modifier
         changeMinerDelegator(minerId, newDelegator);
         changeMinerMaxDebtAmount(minerId, newMaxDebtAmount);
         changeMinerLoanInterestRate(minerId, newLoanInterestRate);
