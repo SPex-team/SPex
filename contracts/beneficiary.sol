@@ -264,7 +264,7 @@ contract SPexBeneficiary {
 
     function buyLoan(address payable seller, CommonTypes.FilActorId minerId) external payable {
         SellItem storage sellItem = _sales[seller][minerId];
-        require(sellItem.amount != 0, "Sale don't exist");
+        require(sellItem.amount != 0, "Sale doesn't exist");
         require(msg.value == sellItem.price, "Paid amount not equal to sale price");
         payable(seller).transfer(sellItem.price);
         _updateLenderOwedAmount(seller, minerId);
