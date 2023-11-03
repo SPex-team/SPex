@@ -170,8 +170,7 @@ contract SPexBeneficiary {
     }
 
     function releaseBeneficiaryAgain(CommonTypes.FilActorId minerId, CommonTypes.FilAddress memory newBeneficiary) external {
-        require(_releasedMinerDelegators[minerId] != address(0), "The miner's beneficiary has not been released");
-        require(msg.sender == _releasedMinerDelegators[minerId], "You are not the delegator of the miner");
+        require(msg.sender == _releasedMinerDelegators[minerId], "You are not the delegator of the miner or miner's beneficiary has not been released");
         MinerTypes.ChangeBeneficiaryParams memory changeBeneficiaryParams = MinerTypes.ChangeBeneficiaryParams({
                 new_beneficiary: newBeneficiary,
                 new_quota: CommonTypes.BigInt(hex"00", false),
