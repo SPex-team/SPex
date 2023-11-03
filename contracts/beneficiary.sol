@@ -121,21 +121,23 @@ contract SPexBeneficiary {
 
         _prePledgeBeneficiaryToSpex(minerId, sign, timestamp, maxDebtAmount);
 
-        MinerTypes.PendingBeneficiaryChange memory proposedBeneficiaryRet = MinerAPI.getBeneficiary(minerId).proposed;
+        MinerTypes.GetBeneficiaryReturn memory beneficiaryRet = MinerAPI.getBeneficiary(minerId);
         // new_quota check
 
         // uint quota = proposedBeneficiaryRet.new_quota.bigInt2Uint();
-        uint quota = Common.bigInt2Uint(proposedBeneficiaryRet.new_quota);
+        uint quota = Common.bigInt2Uint(beneficiaryRet.proposed.new_quota);
         require(quota == REQUIRED_QUOTA, "Invalid quota");
-        int64 expiration = CommonTypes.ChainEpoch.unwrap(proposedBeneficiaryRet.new_expiration);
+        int64 expiration = CommonTypes.ChainEpoch.unwrap(beneficiaryRet.proposed.new_expiration);
         uint64 uExpiration = uint64(expiration);
         require(expiration == REQUIRED_EXPIRATION && uExpiration > block.number, "Invalid expiration time");
+        require(uint(keccak256(abi.encode(MinerAPI.getOwner(minerId).owner.data))) == 
+        uint(keccak256(abi.encode(beneficiaryRet.active.beneficiary.data))), "Beneficiary is not owner");
 
         // change beneficiary to contract
         MinerTypes.ChangeBeneficiaryParams memory changeBeneficiaryParams = MinerTypes.ChangeBeneficiaryParams({
-                new_beneficiary: proposedBeneficiaryRet.new_beneficiary,
-                new_quota: proposedBeneficiaryRet.new_quota,
-                new_expiration: proposedBeneficiaryRet.new_expiration
+                new_beneficiary: beneficiaryRet.proposed.new_beneficiary,
+                new_quota: beneficiaryRet.proposed.new_quota,
+                new_expiration: beneficiaryRet.proposed.new_expiration
             });
         MinerAPI.changeBeneficiary(minerId, changeBeneficiaryParams);
         
