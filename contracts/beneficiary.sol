@@ -266,7 +266,6 @@ contract SPexBeneficiary {
         SellItem storage sellItem = _sales[seller][minerId];
         require(sellItem.amount != 0, "Sale doesn't exist");
         require(msg.value == sellItem.price, "Paid amount not equal to sale price");
-        payable(seller).transfer(sellItem.price);
         _updateLenderOwedAmount(seller, minerId);
         _updateLenderOwedAmount(msg.sender, minerId);
         Loan storage sellerLoan = _loans[seller][minerId];
@@ -277,6 +276,7 @@ contract SPexBeneficiary {
         buyerLoan.lastAmount += sellItem.amount;
         buyerLoan.principleAmount += principleChange;
         delete _sales[seller][minerId];
+        payable(seller).transfer(sellItem.price);
         emit EventBuyLoan(msg.sender, seller, minerId, sellItem.amount, sellItem.price);
     }
 
