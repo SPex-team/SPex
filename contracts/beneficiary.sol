@@ -291,13 +291,22 @@ contract SPexBeneficiary {
         }
     }
 
+    function treatSaleOfRepaidLoan(address lender, CommonTypes.FilActorId minerId) internal {
+        Loan storage loan = _loans[lender][minerId];
+        SellItem storage sellItem =  _sales[lender][minerId];
+        if (sellItem.amount > 0 && sellItem.amount > loan.lastAmount) {
+            delete _sales[lender][minerId];
+            emit EventCancelSellLoan(msg.sender, minerId);
+        }
+    }
+
     function withdrawRepayment(address payable lender, CommonTypes.FilActorId minerId, uint amount) public returns (uint actualRepaymentAmount) {
         Miner storage miner = _miners[minerId];
         require(msg.sender == lender || msg.sender == miner.delegator, "You are not lender or delegator of the miner");
 
-        _preRepayment(lender, minerId, amount);
-
+        _updateOwedAmounts(lender, minerId);
         actualRepaymentAmount = _reduceOwedAmounts(lender, minerId, amount);
+        treatSaleOfRepaidLoan(lender, minerId);
 
         CommonTypes.BigInt memory amountBigInt = Common.uint2BigInt(actualRepaymentAmount);
         CommonTypes.BigInt memory actuallyAmountBitInt = MinerAPI.withdrawBalance(minerId, amountBigInt);
@@ -330,13 +339,18 @@ contract SPexBeneficiary {
         }
     }
 
+    function _directRepayment(address lender, CommonTypes.FilActorId minerId, uint amount) internal returns (uint actualRepaymentAmount) {
+        _updateOwedAmounts(lender, minerId);
+        actualRepaymentAmount = _reduceOwedAmounts(lender, minerId, amount);
+        treatSaleOfRepaidLoan(lender, minerId);
+        _transferRepayment(lender, actualRepaymentAmount);
+        emit EventRepayment(msg.sender, lender, minerId, actualRepaymentAmount);
+    }
+
     function directRepayment(address lender, CommonTypes.FilActorId minerId) external payable returns (uint actualRepaymentAmount) {
         uint messageValue = msg.value;
-        _preRepayment(lender, minerId, messageValue);
-        actualRepaymentAmount = _reduceOwedAmounts(lender, minerId, messageValue);
-        _transferRepayment(lender, actualRepaymentAmount);
+        actualRepaymentAmount = _directRepayment(lender, minerId, messageValue);
         payable(msg.sender).transfer(messageValue - actualRepaymentAmount);
-        emit EventRepayment(msg.sender, lender, minerId, actualRepaymentAmount);
     }
 
     function batchDirectRepayment(address[] memory lenderList, CommonTypes.FilActorId[] memory minerIdList, uint[] memory amountList) external payable returns (uint[] memory actualRepaymentAmounts) {
@@ -345,16 +359,10 @@ contract SPexBeneficiary {
         
         uint totalRepaid;
         actualRepaymentAmounts = new uint[](lenderList.length);
-        
         for (uint i = 0; i < lenderList.length; i++) {
-            _preRepayment(payable(lenderList[i]), minerIdList[i], amountList[i]);
-            
-            uint actualRepaid = _reduceOwedAmounts(payable(lenderList[i]), minerIdList[i], amountList[i]);
+            uint actualRepaid = _directRepayment(payable(lenderList[i]), minerIdList[i], amountList[i]);
             totalRepaid += actualRepaid;
             actualRepaymentAmounts[i] = actualRepaid;
-
-            _transferRepayment(payable(lenderList[i]), actualRepaid);
-            emit EventRepayment(msg.sender, lenderList[i], minerIdList[i], actualRepaid);
         }
 
         require(totalRepaid <= msg.value, "Insufficient funds provided");
@@ -366,27 +374,10 @@ contract SPexBeneficiary {
         
         uint amountRemaining = msg.value;
         actualRepaymentAmounts = new uint[](lenderList.length);
-        
         for (uint i = 0; i < lenderList.length; i++) {
-            address payable lender = payable(lenderList[i]);
-            CommonTypes.FilActorId minerId = minerIdList[i];
-
-            _updateOwedAmounts(lender, minerId);
-            
-            uint actualRepaid = _reduceOwedAmounts(lender, minerId, amountRemaining);
+            uint actualRepaid = _directRepayment(payable(lenderList[i]), minerIdList[i], amountRemaining);
             amountRemaining -= actualRepaid;
             actualRepaymentAmounts[i] = actualRepaid;
-
-            Loan storage loan = _loans[lender][minerId];
-            SellItem storage sellItem =  _sales[lender][minerId];
-            if (sellItem.amount > 0 && actualRepaid > loan.lastAmount - sellItem.amount) {
-                delete _sales[lender][minerId];
-                emit EventCancelSellLoan(msg.sender, minerId);
-            }
-
-            _transferRepayment(lender, actualRepaid);
-            emit EventRepayment(msg.sender, lender, minerId, actualRepaid);
-
             if(amountRemaining == 0) break;
         }
 
