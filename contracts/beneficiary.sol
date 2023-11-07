@@ -291,7 +291,7 @@ contract SPexBeneficiary {
         }
     }
 
-    function treatSaleOfRepaidLoan(address lender, CommonTypes.FilActorId minerId) internal {
+    function _treatSaleOfRepaidLoan(address lender, CommonTypes.FilActorId minerId) internal {
         Loan storage loan = _loans[lender][minerId];
         SellItem storage sellItem =  _sales[lender][minerId];
         if (sellItem.amount > 0 && sellItem.amount > loan.lastAmount) {
@@ -306,7 +306,7 @@ contract SPexBeneficiary {
 
         _updateOwedAmounts(lender, minerId);
         actualRepaymentAmount = _reduceOwedAmounts(lender, minerId, amount);
-        treatSaleOfRepaidLoan(lender, minerId);
+        _treatSaleOfRepaidLoan(lender, minerId);
 
         CommonTypes.BigInt memory amountBigInt = Common.uint2BigInt(actualRepaymentAmount);
         CommonTypes.BigInt memory actuallyAmountBitInt = MinerAPI.withdrawBalance(minerId, amountBigInt);
@@ -342,7 +342,7 @@ contract SPexBeneficiary {
     function _directRepayment(address lender, CommonTypes.FilActorId minerId, uint amount) internal returns (uint actualRepaymentAmount) {
         _updateOwedAmounts(lender, minerId);
         actualRepaymentAmount = _reduceOwedAmounts(lender, minerId, amount);
-        treatSaleOfRepaidLoan(lender, minerId);
+        _treatSaleOfRepaidLoan(lender, minerId);
         _transferRepayment(lender, actualRepaymentAmount);
         emit EventRepayment(msg.sender, lender, minerId, actualRepaymentAmount);
     }
