@@ -280,17 +280,6 @@ contract SPexBeneficiary {
         emit EventBuyLoan(msg.sender, seller, minerId, sellItem.amount, sellItem.price);
     }
 
-    function _preRepayment(address lender, CommonTypes.FilActorId minerId, uint amount) internal {
-        _updateOwedAmounts(lender, minerId);
-        Loan storage loan = _loans[lender][minerId];
-        SellItem storage sellItem =  _sales[lender][minerId];
-        
-        if (sellItem.amount > 0 && amount > loan.lastAmount - sellItem.amount) {
-            delete _sales[lender][minerId];
-            emit EventCancelSellLoan(msg.sender, minerId);
-        }
-    }
-
     function _treatSaleOfRepaidLoan(address lender, CommonTypes.FilActorId minerId) internal {
         Loan storage loan = _loans[lender][minerId];
         SellItem storage sellItem =  _sales[lender][minerId];
