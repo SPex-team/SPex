@@ -62,7 +62,6 @@ contract SPexBeneficiary {
     mapping(CommonTypes.FilActorId => Miner) public _miners;
     mapping(address => mapping(CommonTypes.FilActorId => Loan)) public  _loans;
     mapping(address => mapping(CommonTypes.FilActorId => SellItem)) public _sales;
-    mapping(CommonTypes.FilActorId => address) public _releasedMinerDelegators;
     // mapping(CommonTypes.FilActorId => mapping(address => uint));
     mapping(address => uint) public _lastTimestampMap;
 
@@ -77,10 +76,13 @@ contract SPexBeneficiary {
     uint constant public REQUIRED_QUOTA = 1e68 - 1e18;
     int64 constant public REQUIRED_EXPIRATION = type(int64).max;
 
-    constructor(address foundation, uint maxDebtRate) {
+    constructor(address foundation, uint maxDebtRate, uint feeRate, uint minLendAmount) {
         require(foundation != address(0), "Foundation address cannot be zero address");
+        require(feeRate <= MAX_FEE_RATE, "Fee rate must less than or equal to MAX_FEE_RATE");
         _foundation = foundation;
         _maxDebtRate = maxDebtRate;
+        _feeRate = feeRate;
+        _minLendAmount = minLendAmount;
     }
 
     function _validateTimestamp(uint timestamp) internal {
@@ -104,15 +106,14 @@ contract SPexBeneficiary {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_miners[minerId].minerId);
 
         require(minerIdUint64 == 0,  "Beneficiary already pledged to SPex loan");
-        delete _releasedMinerDelegators[minerId];
 
         MinerTypes.GetOwnerReturn memory ownerReturn = MinerAPI.getOwner(minerId);
         uint64 ownerUint64 = PrecompilesAPI.resolveAddress(ownerReturn.owner);
         uint64 senderUint64 = PrecompilesAPI.resolveEthAddress(msg.sender);
-        // if (senderUint64 != ownerUint64) {
-        //     _validateTimestamp(timestamp);
-        //     Validator.validateOwnerSignForBeneficiary(sign, minerId, ownerUint64, timestamp);
-        // }
+        if (senderUint64 != ownerUint64) {
+            _validateTimestamp(timestamp);
+            Validator.validateOwnerSignForBeneficiary(sign, minerId, ownerUint64, timestamp);
+        }
 
         _checkMaxDebtAmount(minerId, maxDebtAmount);
     }
@@ -121,21 +122,23 @@ contract SPexBeneficiary {
 
         _prePledgeBeneficiaryToSpex(minerId, sign, timestamp, maxDebtAmount);
 
-        MinerTypes.PendingBeneficiaryChange memory proposedBeneficiaryRet = MinerAPI.getBeneficiary(minerId).proposed;
+        MinerTypes.GetBeneficiaryReturn memory beneficiaryRet = MinerAPI.getBeneficiary(minerId);
         // new_quota check
 
         // uint quota = proposedBeneficiaryRet.new_quota.bigInt2Uint();
-        uint quota = Common.bigInt2Uint(proposedBeneficiaryRet.new_quota);
+        uint quota = Common.bigInt2Uint(beneficiaryRet.proposed.new_quota);
         require(quota == REQUIRED_QUOTA, "Invalid quota");
-        int64 expiration = CommonTypes.ChainEpoch.unwrap(proposedBeneficiaryRet.new_expiration);
+        int64 expiration = CommonTypes.ChainEpoch.unwrap(beneficiaryRet.proposed.new_expiration);
         uint64 uExpiration = uint64(expiration);
         require(expiration == REQUIRED_EXPIRATION && uExpiration > block.number, "Invalid expiration time");
+        require(uint(keccak256(abi.encode(MinerAPI.getOwner(minerId).owner.data))) == 
+        uint(keccak256(abi.encode(beneficiaryRet.active.beneficiary.data))), "Beneficiary is not owner");
 
         // change beneficiary to contract
         MinerTypes.ChangeBeneficiaryParams memory changeBeneficiaryParams = MinerTypes.ChangeBeneficiaryParams({
-                new_beneficiary: proposedBeneficiaryRet.new_beneficiary,
-                new_quota: proposedBeneficiaryRet.new_quota,
-                new_expiration: proposedBeneficiaryRet.new_expiration
+                new_beneficiary: beneficiaryRet.proposed.new_beneficiary,
+                new_quota: beneficiaryRet.proposed.new_quota,
+                new_expiration: beneficiaryRet.proposed.new_expiration
             });
         MinerAPI.changeBeneficiary(minerId, changeBeneficiaryParams);
         
@@ -154,31 +157,23 @@ contract SPexBeneficiary {
         emit EventPledgeBeneficiaryToSpex(minerId, msg.sender, maxDebtAmount, loanInterestRate, receiveAddress);
     }
 
-    function releaseBeneficiary(CommonTypes.FilActorId minerId, CommonTypes.FilAddress memory newBeneficiary) external onlyMinerDelegator(minerId) {
+    function releaseBeneficiary(CommonTypes.FilActorId minerId) external onlyMinerDelegator(minerId) {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_miners[minerId].minerId);
         require(minerIdUint64 != 0,  "Beneficiary of miner is not pledged to SPex");
         require(_miners[minerId].lastDebtAmount == 0 , "Debt not fully paid off");
-        MinerTypes.ChangeBeneficiaryParams memory changeBeneficiaryParams = MinerTypes.ChangeBeneficiaryParams({
-                new_beneficiary: newBeneficiary,
+        
+        CommonTypes.FilAddress memory minerOwner = MinerAPI.getOwner(minerId).owner;        
+        MinerAPI.changeBeneficiary(
+            minerId,
+            MinerTypes.ChangeBeneficiaryParams({
+                new_beneficiary: minerOwner,
                 new_quota: CommonTypes.BigInt(hex"00", false),
                 new_expiration: CommonTypes.ChainEpoch.wrap(0)
-            });
-        MinerAPI.changeBeneficiary(minerId, changeBeneficiaryParams);
-        _releasedMinerDelegators[minerId] = _miners[minerId].delegator;
-        delete _miners[minerId];
-        emit EventReleaseBeneficiary(minerId, newBeneficiary);
-    }
+            })
+        );
 
-    function releaseBeneficiaryAgain(CommonTypes.FilActorId minerId, CommonTypes.FilAddress memory newBeneficiary) external {
-        require(_releasedMinerDelegators[minerId] != address(0), "The miner's beneficiary has not been released");
-        require(msg.sender == _releasedMinerDelegators[minerId], "You are not the delegator of the miner");
-        MinerTypes.ChangeBeneficiaryParams memory changeBeneficiaryParams = MinerTypes.ChangeBeneficiaryParams({
-                new_beneficiary: newBeneficiary,
-                new_quota: CommonTypes.BigInt(hex"00", false),
-                new_expiration: CommonTypes.ChainEpoch.wrap(0)
-            });
-        MinerAPI.changeBeneficiary(minerId, changeBeneficiaryParams);
-        emit EventReleaseBeneficiaryAgain(minerId, newBeneficiary);
+        delete _miners[minerId];
+        emit EventReleaseBeneficiary(minerId, minerOwner);
     }
 
     function changeMinerDelegator(CommonTypes.FilActorId minerId, address newDelegator) public onlyMinerDelegator(minerId) {
@@ -219,7 +214,7 @@ contract SPexBeneficiary {
         uint newLoanInterestRate,
         address newReceiveAddress,
         bool disabled
-    ) external onlyMinerDelegator(minerId) {
+    ) external {    //No onlyMinerDelegator(minerId) modifier because the functions called have this modifier
         changeMinerDelegator(minerId, newDelegator);
         changeMinerMaxDebtAmount(minerId, newMaxDebtAmount);
         changeMinerLoanInterestRate(minerId, newLoanInterestRate);
@@ -269,12 +264,11 @@ contract SPexBeneficiary {
 
     function buyLoan(address payable seller, CommonTypes.FilActorId minerId, uint buyAmount) external payable {
         SellItem storage sellItem = _sales[seller][minerId];
-        require(sellItem.amountRemaining != 0, "Sale don't exist");
+        require(sellItem.amountRemaining != 0, "Sale doesn't exist");
         require(buyAmount <= sellItem.amountRemaining, "buyAmount larger than amount on sale");
         uint requiredPayment = sellItem.pricePerFil * buyAmount / 1 ether;
         require(msg.value == requiredPayment, "Paid amount not equal to sale price");
         payable(seller).transfer(requiredPayment);
-
         _updateLenderOwedAmount(seller, minerId);
         _updateLenderOwedAmount(msg.sender, minerId);
 
@@ -290,22 +284,20 @@ contract SPexBeneficiary {
         emit EventBuyLoan(msg.sender, seller, minerId, buyAmount, sellItem.pricePerFil);
     }
 
-    function _preRepayment(address lender, CommonTypes.FilActorId minerId, uint amount) internal {
-        _updateOwedAmounts(lender, minerId);
+    function _treatSaleOfRepaidLoan(address lender, CommonTypes.FilActorId minerId, uint actualRepaymentAmount) internal {
+        SellItem storage sellItem =  _sales[lender][minerId];
+        if (sellItem.amountRemaining > 0) {
+            sellItem.amountRemaining = actualRepaymentAmount >= sellItem.amountRemaining ? 0 : sellItem.amountRemaining - actualRepaymentAmount;
+        }
     }
 
     function withdrawRepayment(address payable lender, CommonTypes.FilActorId minerId, uint amount) public returns (uint actualRepaymentAmount) {
         Miner storage miner = _miners[minerId];
         require(msg.sender == lender || msg.sender == miner.delegator, "You are not lender or delegator of the miner");
 
-        _preRepayment(lender, minerId, amount);
-
+        _updateOwedAmounts(lender, minerId);
         actualRepaymentAmount = _reduceOwedAmounts(lender, minerId, amount);
-
-        SellItem storage sellItem =  _sales[lender][minerId];
-        if (sellItem.amountRemaining > 0) {
-            sellItem.amountRemaining = actualRepaymentAmount >= sellItem.amountRemaining ? 0 : sellItem.amountRemaining - actualRepaymentAmount;
-        }
+        _treatSaleOfRepaidLoan(lender, minerId, actualRepaymentAmount);
 
         CommonTypes.BigInt memory amountBigInt = Common.uint2BigInt(actualRepaymentAmount);
         CommonTypes.BigInt memory actuallyAmountBitInt = MinerAPI.withdrawBalance(minerId, amountBigInt);
@@ -338,17 +330,18 @@ contract SPexBeneficiary {
         }
     }
 
+    function _directRepayment(address lender, CommonTypes.FilActorId minerId, uint amount) internal returns (uint actualRepaymentAmount) {
+        _updateOwedAmounts(lender, minerId);
+        actualRepaymentAmount = _reduceOwedAmounts(lender, minerId, amount);
+        _treatSaleOfRepaidLoan(lender, minerId, actualRepaymentAmount);
+        _transferRepayment(lender, actualRepaymentAmount);
+        emit EventRepayment(msg.sender, lender, minerId, actualRepaymentAmount);
+    }
+
     function directRepayment(address lender, CommonTypes.FilActorId minerId) external payable returns (uint actualRepaymentAmount) {
         uint messageValue = msg.value;
-        _preRepayment(lender, minerId, messageValue);
-        actualRepaymentAmount = _reduceOwedAmounts(lender, minerId, messageValue);
-        SellItem storage sellItem =  _sales[lender][minerId];
-        if (sellItem.amountRemaining > 0) {
-            sellItem.amountRemaining = actualRepaymentAmount >= sellItem.amountRemaining ? 0 : sellItem.amountRemaining - actualRepaymentAmount;
-        }
-        _transferRepayment(lender, actualRepaymentAmount);
+        actualRepaymentAmount = _directRepayment(lender, minerId, messageValue);
         payable(msg.sender).transfer(messageValue - actualRepaymentAmount);
-        emit EventRepayment(msg.sender, lender, minerId, actualRepaymentAmount);
     }
 
     function batchDirectRepayment(address[] memory lenderList, CommonTypes.FilActorId[] memory minerIdList, uint[] memory amountList) external payable returns (uint[] memory actualRepaymentAmounts) {
@@ -357,21 +350,10 @@ contract SPexBeneficiary {
         
         uint totalRepaid;
         actualRepaymentAmounts = new uint[](lenderList.length);
-        
         for (uint i = 0; i < lenderList.length; i++) {
-            _preRepayment(payable(lenderList[i]), minerIdList[i], amountList[i]);
-            
-            uint actualRepaid = _reduceOwedAmounts(payable(lenderList[i]), minerIdList[i], amountList[i]);
+            uint actualRepaid = _directRepayment(payable(lenderList[i]), minerIdList[i], amountList[i]);
             totalRepaid += actualRepaid;
             actualRepaymentAmounts[i] = actualRepaid;
-
-            SellItem storage sellItem =  _sales[lenderList[i]][minerIdList[i]];
-            if (sellItem.amountRemaining > 0) {
-                sellItem.amountRemaining = actualRepaid >= sellItem.amountRemaining ? 0 : sellItem.amountRemaining - actualRepaid;
-            }
-
-            _transferRepayment(payable(lenderList[i]), actualRepaid);
-            emit EventRepayment(msg.sender, lenderList[i], minerIdList[i], actualRepaid);
         }
 
         require(totalRepaid <= msg.value, "Insufficient funds provided");
@@ -383,25 +365,10 @@ contract SPexBeneficiary {
         
         uint amountRemaining = msg.value;
         actualRepaymentAmounts = new uint[](lenderList.length);
-        
         for (uint i = 0; i < lenderList.length; i++) {
-            address payable lender = payable(lenderList[i]);
-            CommonTypes.FilActorId minerId = minerIdList[i];
-
-            _updateOwedAmounts(lender, minerId);
-            
-            uint actualRepaid = _reduceOwedAmounts(lender, minerId, amountRemaining);
+            uint actualRepaid = _directRepayment(payable(lenderList[i]), minerIdList[i], amountRemaining);
             amountRemaining -= actualRepaid;
             actualRepaymentAmounts[i] = actualRepaid;
-
-            SellItem storage sellItem =  _sales[lender][minerId];
-            if (sellItem.amountRemaining > 0) {
-                sellItem.amountRemaining = actualRepaid >= sellItem.amountRemaining ? 0 : sellItem.amountRemaining - actualRepaid;
-            }
-
-            _transferRepayment(lender, actualRepaid);
-            emit EventRepayment(msg.sender, lender, minerId, actualRepaid);
-
             if(amountRemaining == 0) break;
         }
 
