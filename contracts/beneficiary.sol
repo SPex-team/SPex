@@ -268,7 +268,6 @@ contract SPexBeneficiary {
         require(buyAmount <= sellItem.amountRemaining, "buyAmount larger than amount on sale");
         uint requiredPayment = sellItem.pricePerFil * buyAmount / 1 ether;
         require(msg.value == requiredPayment, "Paid amount not equal to sale price");
-        payable(seller).transfer(requiredPayment);
         _updateLenderOwedAmount(seller, minerId);
         _updateLenderOwedAmount(msg.sender, minerId);
 
@@ -280,6 +279,8 @@ contract SPexBeneficiary {
         buyerLoan.lastAmount += buyAmount;
         buyerLoan.principleAmount += principleChange;
         sellItem.amountRemaining -= buyAmount;
+        
+        payable(seller).transfer(requiredPayment);
 
         emit EventBuyLoan(msg.sender, seller, minerId, buyAmount, sellItem.pricePerFil);
     }
