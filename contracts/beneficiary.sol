@@ -388,14 +388,13 @@ contract SPexBeneficiary {
             loan.lastAmount = 0;
             
             //Delete lender from miner's lender list
-            uint i;
-            for (i = 0; i < miner.lenders.length; i++) {
-                if (miner.lenders[i] == msg.sender) {
+            for (uint i = 0; i < miner.lenders.length; i++) {
+                if (miner.lenders[i] == lender) {
+                    miner.lenders[i] = miner.lenders[miner.lenders.length - 1];
+                    miner.lenders.pop();
                     break;
                 }
             }
-            miner.lenders[i] = miner.lenders[miner.lenders.length - 1];
-            miner.lenders.pop();
         }
 
         //The user have payed back more than interest in this case, so all remaining debt are principle
