@@ -23,7 +23,6 @@ contract SPexBeneficiary {
 
     event EventPledgeBeneficiaryToSpex(CommonTypes.FilActorId, address, uint, uint, address);
     event EventReleaseBeneficiary(CommonTypes.FilActorId, CommonTypes.FilAddress);
-    event EventReleaseBeneficiaryAgain(CommonTypes.FilActorId, CommonTypes.FilAddress);
     event EventLendToMiner(address, CommonTypes.FilActorId, uint);
     event EventChangeMinerDelegator(CommonTypes.FilActorId, address);
     event EventChangeMinerMaxDebtAmount(CommonTypes.FilActorId, uint);
