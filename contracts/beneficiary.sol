@@ -43,7 +43,6 @@ contract SPexBeneficiary {
         address receiveAddress;
         bool disabled;
         uint principleAmount;
-        uint lastUpdateTime;
         address[] lenders;
     }
 
@@ -149,7 +148,6 @@ contract SPexBeneficiary {
             receiveAddress: receiveAddress,
             disabled: disabled,
             principleAmount: 0,
-            lastUpdateTime: block.timestamp,
             lenders: new address[](0)
         });
         _miners[minerId] = miner;
