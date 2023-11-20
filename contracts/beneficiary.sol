@@ -230,7 +230,9 @@ contract SPexBeneficiary {
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(minerId);
         uint minerBalance = FilAddress.toAddress(minerIdUint64).balance;
         require((minerTotalDebtAmount + msg.value) <= (minerBalance * _maxDebtRate / RATE_BASE), "Debt rate of miner after lend larger than allowed");
-        miner.lenders.push(msg.sender);
+        if (_loans[msg.sender][minerId].lastUpdateTime == 0){
+            miner.lenders.push(msg.sender);
+        }
         _increaseOwedAmounts(msg.sender, minerId, msg.value);
         payable(miner.receiveAddress).transfer(msg.value);
         emit EventLendToMiner(msg.sender, minerId, msg.value);
@@ -389,6 +391,7 @@ contract SPexBeneficiary {
                 if (miner.lenders[i] == lender) {
                     miner.lenders[i] = miner.lenders[miner.lenders.length - 1];
                     miner.lenders.pop();
+                    delete _loans[lender][minerId];
                     break;
                 }
             }
