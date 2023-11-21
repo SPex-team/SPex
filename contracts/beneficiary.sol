@@ -270,8 +270,6 @@ contract SPexBeneficiary {
 
     function sellLoan(CommonTypes.FilActorId minerId, uint ceilingAmount, uint pricePerFil) public {
         require(_sales[msg.sender][minerId].amountRemaining == 0, "Sale already exists");
-        uint newAmount = _updateLenderOwedAmount(msg.sender, minerId);
-        require(ceilingAmount <= newAmount, "Insufficient owed amount");
         SellItem memory sellItem = SellItem({
             amountRemaining: ceilingAmount,
             pricePerFil: pricePerFil
@@ -298,8 +296,10 @@ contract SPexBeneficiary {
         require(buyAmount <= sellItem.amountRemaining, "buyAmount larger than amount on sale");
         uint requiredPayment = sellItem.pricePerFil * buyAmount / 1 ether;
         require(msg.value == requiredPayment, "Paid amount not equal to sale price");
-        _updateLenderOwedAmount(seller, minerId);
+        
         _updateLenderOwedAmount(msg.sender, minerId);
+        uint newAmount = _updateLenderOwedAmount(seller, minerId);
+        require(buyAmount <= newAmount, "Insufficient owed amount");
 
         Loan storage sellerLoan = _loans[seller][minerId];
         Loan storage buyerLoan = _loans[msg.sender][minerId];
