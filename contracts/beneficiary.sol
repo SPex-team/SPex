@@ -296,7 +296,7 @@ contract SPexBeneficiary {
         require(buyAmount <= sellItem.amountRemaining, "buyAmount larger than amount on sale");
         uint requiredPayment = sellItem.pricePerFil * buyAmount / 1 ether;
         require(msg.value == requiredPayment, "Paid amount not equal to sale price");
-        
+
         _updateLenderOwedAmount(msg.sender, minerId);
         uint newAmount = _updateLenderOwedAmount(seller, minerId);
         require(buyAmount <= newAmount, "Insufficient owed amount");
@@ -326,8 +326,9 @@ contract SPexBeneficiary {
         Miner storage miner = _miners[minerId];
         require(msg.sender == lender || msg.sender == miner.delegator, "You are not lender or delegator of the miner");
 
-        _updateLenderOwedAmount(lender, minerId);
+        uint owedInterest = _updateLenderOwedAmount(lender, minerId) - _loans[lender][minerId].principleAmount;
         actualRepaymentAmount = _reduceOwedAmounts(lender, minerId, amount);
+        uint repaiedInterest = actualRepaymentAmount >= owedInterest ? owedInterest : actualRepaymentAmount;
         _treatSaleOfRepaidLoan(lender, minerId, actualRepaymentAmount);
 
         CommonTypes.BigInt memory amountBigInt = Common.uint2BigInt(actualRepaymentAmount);
@@ -336,7 +337,7 @@ contract SPexBeneficiary {
         uint withdrawnAmount = Common.bigInt2Uint(actuallyAmountBitInt);
         require(withdrawnAmount == actualRepaymentAmount, "Withdrawn amount not equal to repaid amount");
 
-        _transferRepayment(lender, actualRepaymentAmount);
+        _transferRepayment(lender, actualRepaymentAmount, repaiedInterest);
 
         emit EventWithdrawRepayment(msg.sender, lender, minerId, amount);
     }
@@ -362,10 +363,11 @@ contract SPexBeneficiary {
     }
 
     function _directRepayment(address lender, CommonTypes.FilActorId minerId, uint amount) internal returns (uint actualRepaymentAmount) {
-        _updateLenderOwedAmount(lender, minerId);
+        uint owedInterest = _updateLenderOwedAmount(lender, minerId) - _loans[lender][minerId].principleAmount;
         actualRepaymentAmount = _reduceOwedAmounts(lender, minerId, amount);
+        uint repaiedInterest = actualRepaymentAmount >= owedInterest ? owedInterest : actualRepaymentAmount;
         _treatSaleOfRepaidLoan(lender, minerId, actualRepaymentAmount);
-        _transferRepayment(lender, actualRepaymentAmount);
+        _transferRepayment(lender, actualRepaymentAmount, repaiedInterest);
         emit EventRepayment(msg.sender, lender, minerId, actualRepaymentAmount);
     }
 
@@ -457,8 +459,8 @@ contract SPexBeneficiary {
         loan.lastUpdateTime = blockTimestamp;
     }
 
-    function _transferRepayment(address to, uint amount) internal {
-        uint commissionAmount = amount * _feeRate / RATE_BASE;
+    function _transferRepayment(address to, uint amount, uint interestAmount) internal {
+        uint commissionAmount = interestAmount * _feeRate / RATE_BASE;
         uint toUserAmount = amount - commissionAmount;
         payable(to).transfer(toUserAmount);
     }
