@@ -254,15 +254,15 @@ contract SPexBeneficiary {
         require(miner.disabled == false, "Lending for this miner is disabled");
         require(miner.lenders.length <= miner.maxLenderCount, "Lenders list too long");
         require(msg.value >= miner.minLendAmount, "Lend amount smaller than minimum allowed");
+        if (_loans[msg.sender][minerId].lastUpdateTime == 0){
+            miner.lenders.push(msg.sender);
+        }
         uint minerTotalDebtAmount = _updateMinerDebtAmounts(minerId);
         require((minerTotalDebtAmount + msg.value) <= miner.maxDebtAmount, "Debt amount after lend large than allowed by miner");
 
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(minerId);
         uint minerBalance = FilAddress.toAddress(minerIdUint64).balance;
         require((minerTotalDebtAmount + msg.value) <= (minerBalance * _maxDebtRate / RATE_BASE), "Debt rate of miner after lend larger than allowed");
-        if (_loans[msg.sender][minerId].lastUpdateTime == 0){
-            miner.lenders.push(msg.sender);
-        }
         _increaseOwedAmounts(msg.sender, minerId, msg.value);
         payable(miner.receiveAddress).transfer(msg.value);
         emit EventLendToMiner(msg.sender, minerId, msg.value);
