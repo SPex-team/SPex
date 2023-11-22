@@ -228,7 +228,7 @@ contract SPexBeneficiary {
         require(miner.disabled == false, "Lending for this miner is disabled");
         require(msg.value >= _minLendAmount, "Lend amount smaller than minimum allowed");
         _updateOwedAmounts(msg.sender, minerId);
-        require((miner.lastDebtAmount + msg.value) <= miner.maxDebtAmount, "Debt amount after lend large than allowed by miner");
+        require((miner.principleAmount + msg.value) <= miner.maxDebtAmount, "Debt amount after lend large than allowed by miner");
 
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(minerId);
         uint minerBalance = FilAddress.toAddress(minerIdUint64).balance;
