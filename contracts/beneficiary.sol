@@ -298,7 +298,6 @@ contract SPexBeneficiary {
         uint requiredPayment = sellItem.pricePerFil * buyAmount / 1 ether;
         require(msg.value == requiredPayment, "Paid amount not equal to sale price");
 
-        _updateLenderOwedAmount(msg.sender, minerId);
         uint newAmount = _updateLenderOwedAmount(seller, minerId);
         require(buyAmount <= newAmount, "Insufficient owed amount");
 
