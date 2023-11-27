@@ -34,7 +34,7 @@ contract SPexBeneficiary {
     event EventRepayment(address, address, CommonTypes.FilActorId, uint);
     event EventWithdrawRepayment(address, address, CommonTypes.FilActorId, uint);
     event EventSellLoan(address, CommonTypes.FilActorId, uint, uint);
-    event EventBuyLoan(address, address, CommonTypes.FilActorId, uint, uint);
+    event EventBuyLoan(address, address, CommonTypes.FilActorId, uint, uint, uint);
     event EventCancelSellLoan(address, CommonTypes.FilActorId);
 
     struct Miner {
@@ -305,15 +305,22 @@ contract SPexBeneficiary {
         Loan storage sellerLoan = _loans[seller][minerId];
         Loan storage buyerLoan = _loans[msg.sender][minerId];
         uint principalChange = (sellerLoan.principalAmount * buyAmount + (sellerLoan.lastAmount - 1)) / sellerLoan.lastAmount;  //Round up
+
         sellerLoan.lastAmount -= buyAmount;
         sellerLoan.principalAmount -= principalChange;
-        buyerLoan.lastAmount += buyAmount;
-        buyerLoan.principalAmount += principalChange;
         sellItem.amountRemaining -= buyAmount;
-        
-        payable(seller).transfer(requiredPayment);
 
-        emit EventBuyLoan(msg.sender, seller, minerId, buyAmount, sellItem.pricePerFil);
+        buyerLoan.lastAmount += buyAmount;
+        buyerLoan.principalAmount += buyAmount
+
+        uint interestAmount = buyAmount - principalChange
+        uint commissionAmount = interestAmount * _feeRate / RATE_BASE;
+        if commissionAmount < requiredPayment {
+            uint toSellerAmount = requiredPayment - commissionAmount
+            payable(seller).transfer(toSellerAmount);
+        }
+        
+        emit EventBuyLoan(msg.sender, seller, minerId, buyAmount, sellItem.pricePerFil, commissionAmount);
     }
 
     function _treatSaleOfRepaidLoan(address lender, CommonTypes.FilActorId minerId, uint actualRepaymentAmount) internal {
