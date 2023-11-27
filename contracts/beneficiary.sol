@@ -72,7 +72,7 @@ contract SPexBeneficiary {
     uint public _maxDebtRate;
     uint public _minLendAmount;
 
-    uint constant public MAX_FEE_RATE = 10000;
+    uint constant public MAX_FEE_RATE = 200000;
     uint constant public RATE_BASE = 1000000;
 
     uint constant public REQUIRED_QUOTA = 1e68 - 1e18;
