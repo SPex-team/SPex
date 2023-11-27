@@ -64,6 +64,9 @@ describe("Contracts", function () {
       1000000
     );
 
+    let balance = await spexBeneficiary.getBalance(10323231);
+    console.log("balance: ", balance);
+
     return { spexBeneficiary };
   }
 
@@ -143,7 +146,7 @@ describe("Contracts", function () {
   //   }
 
   function checkParams(expectParams, chainParams) {
-    console.log("expectParams: ", expectParams)
+    console.log("expectParams: ", expectParams);
     if (Array.isArray(expectParams)) {
       if (expectParams.length != chainParams.length) {
         throw `expectParams.length != chainParams.length ${expectParams.length} != ${chainParams.length}`;
@@ -215,14 +218,19 @@ describe("Contracts", function () {
         `0x${lastTimestamp.toString(16)}`,
       ]);
 
-      let mineBlockNumberHex = `0x${(1000 - blockNumber).toString(16)}`
-      await hre.network.provider.send("hardhat_mine", [mineBlockNumberHex, "0x1"]);
+      let mineBlockNumberHex = `0x${(1000 - blockNumber).toString(16)}`;
+      await hre.network.provider.send("hardhat_mine", [
+        mineBlockNumberHex,
+        "0x1",
+      ]);
 
       blockNumber = await ethers.provider.getBlockNumber();
       console.log("blockNumber: ", blockNumber);
 
       lastTimestamp = (await ethers.provider.getBlock()).timestamp;
       console.log("lastTimestamp3: ", lastTimestamp);
+
+      let lastSignerAddress = undefined
 
       for (stepIndex in stepList) {
         step = stepList[stepIndex];
@@ -259,6 +267,14 @@ describe("Contracts", function () {
 
         // let miner = await contract._miners(10323231)
         // console.log("miner: ", miner)
+
+        tx = await contract._updateMinerAndAllLendersAmounts(10323231);
+        await tx.wait();
+        lastSignerAddress = signer.address
+        if (lastSignerAddress != undefined) {
+            loan = await contract._loans(lastSignerAddress, 10323231)
+            console.log("loan: ", loan)
+        }
 
         let block = await ethers.provider.getBlock();
         let blockTmestamp = (await ethers.provider.getBlock()).timestamp;

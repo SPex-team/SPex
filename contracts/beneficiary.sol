@@ -12,10 +12,12 @@ import "@zondax/filecoin-solidity/contracts/v0.8/utils/FilAddresses.sol";
 
 import "@zondax/filecoin-solidity/contracts/v0.8/types/CommonTypes.sol";
 
-import "fevmate/contracts/utils/FilAddress.sol";
+// import "fevmate/contracts/utils/FilAddress.sol";
 
 import "./utils/Common.sol";
 import "./utils/Validator.sol";
+
+import "./utils/FilAddress.sol";
 
 
 /// @author Mingming Tang
@@ -133,25 +135,25 @@ contract SPexBeneficiary {
         uint maxLenderCount,
         uint minLendAmount) external {
 
-        _prePledgeBeneficiaryToSpex(minerId, sign, timestamp, maxDebtAmount, minLendAmount);
+        // _prePledgeBeneficiaryToSpex(minerId, sign, timestamp, maxDebtAmount, minLendAmount);
 
-        MinerTypes.GetBeneficiaryReturn memory beneficiaryRet = MinerAPI.getBeneficiary(minerId);
-        // new_quota check
+        // MinerTypes.GetBeneficiaryReturn memory beneficiaryRet = MinerAPI.getBeneficiary(minerId);
+        // // new_quota check
 
-        // uint quota = proposedBeneficiaryRet.new_quota.bigInt2Uint();
-        require(Common.bigInt2Uint(beneficiaryRet.proposed.new_quota) == REQUIRED_QUOTA, "Invalid quota");
-        int64 expiration = CommonTypes.ChainEpoch.unwrap(beneficiaryRet.proposed.new_expiration);
-        uint64 uExpiration = uint64(expiration);
-        require(expiration == REQUIRED_EXPIRATION && uExpiration > block.number, "Invalid expiration time");
-        require(uint(keccak256(abi.encode(MinerAPI.getOwner(minerId).owner.data))) == 
-        uint(keccak256(abi.encode(beneficiaryRet.active.beneficiary.data))), "Beneficiary is not owner");
+        // // uint quota = proposedBeneficiaryRet.new_quota.bigInt2Uint();
+        // require(Common.bigInt2Uint(beneficiaryRet.proposed.new_quota) == REQUIRED_QUOTA, "Invalid quota");
+        // int64 expiration = CommonTypes.ChainEpoch.unwrap(beneficiaryRet.proposed.new_expiration);
+        // uint64 uExpiration = uint64(expiration);
+        // require(expiration == REQUIRED_EXPIRATION && uExpiration > block.number, "Invalid expiration time");
+        // require(uint(keccak256(abi.encode(MinerAPI.getOwner(minerId).owner.data))) == 
+        // uint(keccak256(abi.encode(beneficiaryRet.active.beneficiary.data))), "Beneficiary is not owner");
 
-        // change beneficiary to contract
-        MinerAPI.changeBeneficiary(minerId, MinerTypes.ChangeBeneficiaryParams({
-            new_beneficiary: beneficiaryRet.proposed.new_beneficiary,
-            new_quota: beneficiaryRet.proposed.new_quota,
-            new_expiration: beneficiaryRet.proposed.new_expiration
-        }));
+        // // change beneficiary to contract
+        // MinerAPI.changeBeneficiary(minerId, MinerTypes.ChangeBeneficiaryParams({
+        //     new_beneficiary: beneficiaryRet.proposed.new_beneficiary,
+        //     new_quota: beneficiaryRet.proposed.new_quota,
+        //     new_expiration: beneficiaryRet.proposed.new_expiration
+        // }));
         
         Miner memory miner = Miner ({
             minerId: minerId,
@@ -266,6 +268,11 @@ contract SPexBeneficiary {
         _increaseOwedAmounts(msg.sender, minerId, msg.value);
         payable(miner.receiveAddress).transfer(msg.value);
         emit EventLendToMiner(msg.sender, minerId, msg.value);
+    }
+
+    function getBalance(CommonTypes.FilActorId minerId) external view returns (uint) {
+        uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(minerId);
+        return FilAddress.toAddress(minerIdUint64).balance;
     }
 
     function sellLoan(CommonTypes.FilActorId minerId, uint ceilingAmount, uint pricePerFil) public {
@@ -456,7 +463,7 @@ contract SPexBeneficiary {
 
     }
 
-    function _updateMinerAndAllLendersAmounts(CommonTypes.FilActorId minerId) internal returns (uint currentDebtAmount) {
+    function _updateMinerAndAllLendersAmounts(CommonTypes.FilActorId minerId) public returns (uint currentDebtAmount) {
         address[] storage lenders = _miners[minerId].lenders;
         for (uint i = 0; i < lenders.length; i++) {
             currentDebtAmount += _updateLenderOwedAmount(lenders[i], minerId);
