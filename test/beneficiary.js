@@ -45,7 +45,7 @@ describe("SPexBeneficiary", function () {
     // const ERC20 = await hre.ethers.getContractFactory("FeedbackToken");
     const spexBeneficiary = await SPexBeneficiary.deploy(INIT_FOUNDATION_ADDRESS, INIT_MAX_DEBT_RATE);
     await spexBeneficiary.deployed();
-    return { spex, owner, otherAccount };
+    return { spexBeneficiary, owner, otherAccount };
   }
 
   describe("Deployment", function () {
