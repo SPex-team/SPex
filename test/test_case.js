@@ -272,7 +272,9 @@ describe("Contracts", function () {
         await tx.wait();
         lastSignerAddress = signer.address
         if (lastSignerAddress != undefined) {
+            blockTimestamp = await contract.getBlockTimestamp()
             loan = await contract._loans(lastSignerAddress, 10323231)
+            console.log("blockTimestamp: ", blockTimestamp)
             console.log("loan: ", loan)
         }
 

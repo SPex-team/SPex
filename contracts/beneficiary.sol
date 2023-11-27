@@ -469,8 +469,11 @@ contract SPexBeneficiary {
             currentDebtAmount += _updateLenderOwedAmount(lenders[i], minerId);
         }
     }
-
-    function _updateLenderOwedAmount(address lender, CommonTypes.FilActorId minerId) internal returns (uint currentOwedAmount) {
+    function getBlockTimestamp() public view returns (uint) {
+        return block.timestamp;
+        
+    }
+    function _updateLenderOwedAmount(address lender, CommonTypes.FilActorId minerId) public returns (uint currentOwedAmount) {
         uint blockTimestamp = block.timestamp;
         Loan storage loan = _loans[lender][minerId];
         currentOwedAmount = Common.calculatePrincipalAndInterest(loan.lastAmount, loan.lastUpdateTime, blockTimestamp, _miners[minerId].loanInterestRate, RATE_BASE);
