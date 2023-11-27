@@ -44,14 +44,14 @@ contract SPexBeneficiary {
         uint loanInterestRate;
         address receiveAddress;
         bool disabled;
-        uint principleAmount;
+        uint principalAmount;
         uint maxLenderCount;
         uint minLendAmount;
         address[] lenders;
     }
 
     struct Loan {
-        uint principleAmount;
+        uint principalAmount;
         uint lastAmount;
         uint lastUpdateTime;
     }
@@ -160,7 +160,7 @@ contract SPexBeneficiary {
             loanInterestRate: loanInterestRate,
             receiveAddress: receiveAddress,
             disabled: disabled,
-            principleAmount: 0,
+            principalAmount: 0,
             maxLenderCount: maxLenderCount,
             minLendAmount: minLendAmount,
             lenders: new address[](0)
@@ -259,7 +259,7 @@ contract SPexBeneficiary {
             miner.lenders.push(msg.sender);
         }
         uint minerTotalDebtAmount = _updateMinerDebtAmounts(minerId);
-        require((miner.principleAmount + msg.value) <= miner.maxDebtAmount, "Debt amount after lend large than allowed by miner");
+        require((miner.principalAmount + msg.value) <= miner.maxDebtAmount, "Debt amount after lend large than allowed by miner");
 
         uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(minerId);
         uint minerBalance = FilAddress.toAddress(minerIdUint64).balance;
@@ -304,11 +304,11 @@ contract SPexBeneficiary {
 
         Loan storage sellerLoan = _loans[seller][minerId];
         Loan storage buyerLoan = _loans[msg.sender][minerId];
-        uint principleChange = (sellerLoan.principleAmount * buyAmount + (sellerLoan.lastAmount - 1)) / sellerLoan.lastAmount;  //Round up
+        uint principalChange = (sellerLoan.principalAmount * buyAmount + (sellerLoan.lastAmount - 1)) / sellerLoan.lastAmount;  //Round up
         sellerLoan.lastAmount -= buyAmount;
-        sellerLoan.principleAmount -= principleChange;
+        sellerLoan.principalAmount -= principalChange;
         buyerLoan.lastAmount += buyAmount;
-        buyerLoan.principleAmount += principleChange;
+        buyerLoan.principalAmount += principalChange;
         sellItem.amountRemaining -= buyAmount;
         
         payable(seller).transfer(requiredPayment);
@@ -327,7 +327,7 @@ contract SPexBeneficiary {
         Miner storage miner = _miners[minerId];
         require(msg.sender == lender || msg.sender == miner.delegator, "You are not lender or delegator of the miner");
 
-        uint owedInterest = _updateLenderOwedAmount(lender, minerId) - _loans[lender][minerId].principleAmount;
+        uint owedInterest = _updateLenderOwedAmount(lender, minerId) - _loans[lender][minerId].principalAmount;
         actualRepaymentAmount = _reduceOwedAmounts(lender, minerId, amount);
         uint repaiedInterest = actualRepaymentAmount >= owedInterest ? owedInterest : actualRepaymentAmount;
         _treatSaleOfRepaidLoan(lender, minerId, actualRepaymentAmount);
@@ -364,7 +364,7 @@ contract SPexBeneficiary {
     }
 
     function _directRepayment(address lender, CommonTypes.FilActorId minerId, uint amount) internal returns (uint actualRepaymentAmount) {
-        uint owedInterest = _updateLenderOwedAmount(lender, minerId) - _loans[lender][minerId].principleAmount;
+        uint owedInterest = _updateLenderOwedAmount(lender, minerId) - _loans[lender][minerId].principalAmount;
         actualRepaymentAmount = _reduceOwedAmounts(lender, minerId, amount);
         uint repaiedInterest = actualRepaymentAmount >= owedInterest ? owedInterest : actualRepaymentAmount;
         _treatSaleOfRepaidLoan(lender, minerId, actualRepaymentAmount);
@@ -430,18 +430,18 @@ contract SPexBeneficiary {
             }
         }
 
-        //The user have payed back more than interest in this case, so all remaining debt are principle
-        if (loan.lastAmount < loan.principleAmount) {
-            miner.principleAmount -= loan.principleAmount - loan.lastAmount;
-            loan.principleAmount = loan.lastAmount;
+        //The user have payed back more than interest in this case, so all remaining debt are principal
+        if (loan.lastAmount < loan.principalAmount) {
+            miner.principalAmount -= loan.principalAmount - loan.lastAmount;
+            loan.principalAmount = loan.lastAmount;
         }
     }
 
     function _increaseOwedAmounts(address lender, CommonTypes.FilActorId minerId, uint amount) internal {
         Loan storage loan = _loans[lender][minerId];
         Miner storage miner = _miners[minerId];
-        miner.principleAmount += amount;
-        loan.principleAmount += amount;
+        miner.principalAmount += amount;
+        loan.principalAmount += amount;
         loan.lastAmount += amount;
     }
 
@@ -455,7 +455,7 @@ contract SPexBeneficiary {
     function _updateLenderOwedAmount(address lender, CommonTypes.FilActorId minerId) internal returns (uint currentOwedAmount) {
         uint blockTimestamp = block.timestamp;
         Loan storage loan = _loans[lender][minerId];
-        currentOwedAmount = Common.calculatePrincipleAndInterest(loan.lastAmount, loan.lastUpdateTime, blockTimestamp, _miners[minerId].loanInterestRate, RATE_BASE);
+        currentOwedAmount = Common.calculatePrincipalAndInterest(loan.lastAmount, loan.lastUpdateTime, blockTimestamp, _miners[minerId].loanInterestRate, RATE_BASE);
         loan.lastAmount = currentOwedAmount;
         loan.lastUpdateTime = blockTimestamp;
     }
@@ -472,13 +472,13 @@ contract SPexBeneficiary {
             (uint currentAmountOwed,) = getCurrentLenderOwedAmount(miner.lenders[i], minerId);
             totalDebt += currentAmountOwed;
         }
-        principal = miner.principleAmount;
+        principal = miner.principalAmount;
     }
 
     function getCurrentLenderOwedAmount(address lender, CommonTypes.FilActorId minerId) public view returns(uint totalAmountOwed, uint principal) {
         Loan storage loan = _loans[lender][minerId];
-        totalAmountOwed = Common.calculatePrincipleAndInterest(loan.lastAmount, loan.lastUpdateTime, block.timestamp, _miners[minerId].loanInterestRate, RATE_BASE);
-        principal = loan.principleAmount;
+        totalAmountOwed = Common.calculatePrincipalAndInterest(loan.lastAmount, loan.lastUpdateTime, block.timestamp, _miners[minerId].loanInterestRate, RATE_BASE);
+        principal = loan.principalAmount;
     }
 
     modifier onlyFoundation {
