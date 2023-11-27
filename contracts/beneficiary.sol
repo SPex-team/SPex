@@ -311,12 +311,12 @@ contract SPexBeneficiary {
         sellItem.amountRemaining -= buyAmount;
 
         buyerLoan.lastAmount += buyAmount;
-        buyerLoan.principalAmount += buyAmount
+        buyerLoan.principalAmount += buyAmount;
 
-        uint interestAmount = buyAmount - principalChange
+        uint interestAmount = buyAmount - principalChange;
         uint commissionAmount = interestAmount * _feeRate / RATE_BASE;
-        if commissionAmount < requiredPayment {
-            uint toSellerAmount = requiredPayment - commissionAmount
+        if (commissionAmount < requiredPayment) {
+            uint toSellerAmount = requiredPayment - commissionAmount;
             payable(seller).transfer(toSellerAmount);
         }
         
