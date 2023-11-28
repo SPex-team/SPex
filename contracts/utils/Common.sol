@@ -13,7 +13,7 @@ library Common {
         bool neg;
     }
 
-    function calculatePrincipleAndInterest(uint loanAmount, uint startTimestamp, uint endTimestamp, uint annualRate, uint rateBase) public pure returns (uint) {
+    function calculatePrincipalAndInterest(uint loanAmount, uint startTimestamp, uint endTimestamp, uint annualRate, uint rateBase) public pure returns (uint) {
         uint borrowPeriod = endTimestamp - startTimestamp;
         if (loanAmount == 0 || borrowPeriod == 0) return loanAmount;
         UD60x18 x = ud(borrowPeriod * annualRate * uUNIT / (31536000 * rateBase));
