@@ -12,10 +12,11 @@ import "@zondax/filecoin-solidity/contracts/v0.8/utils/FilAddresses.sol";
 
 import "@zondax/filecoin-solidity/contracts/v0.8/types/CommonTypes.sol";
 
-import "fevmate/contracts/utils/FilAddress.sol";
+// import "fevmate/contracts/utils/FilAddress.sol";
 
 import "./utils/Common.sol";
 import "./utils/Validator.sol";
+import "./utils/FilAddress.sol";
 
 
 /// @author Mingming Tang
@@ -133,25 +134,25 @@ contract SPexBeneficiary {
         uint maxLenderCount,
         uint minLendAmount) external {
 
-        _prePledgeBeneficiaryToSpex(minerId, sign, timestamp, maxDebtAmount, minLendAmount);
+        // _prePledgeBeneficiaryToSpex(minerId, sign, timestamp, maxDebtAmount, minLendAmount);
 
-        MinerTypes.GetBeneficiaryReturn memory beneficiaryRet = MinerAPI.getBeneficiary(minerId);
-        // new_quota check
+        // MinerTypes.GetBeneficiaryReturn memory beneficiaryRet = MinerAPI.getBeneficiary(minerId);
+        // // new_quota check
 
-        // uint quota = proposedBeneficiaryRet.new_quota.bigInt2Uint();
-        require(Common.bigInt2Uint(beneficiaryRet.proposed.new_quota) == REQUIRED_QUOTA, "Invalid quota");
-        int64 expiration = CommonTypes.ChainEpoch.unwrap(beneficiaryRet.proposed.new_expiration);
-        uint64 uExpiration = uint64(expiration);
-        require(expiration == REQUIRED_EXPIRATION && uExpiration > block.number, "Invalid expiration time");
-        require(uint(keccak256(abi.encode(MinerAPI.getOwner(minerId).owner.data))) == 
-        uint(keccak256(abi.encode(beneficiaryRet.active.beneficiary.data))), "Beneficiary is not owner");
+        // // uint quota = proposedBeneficiaryRet.new_quota.bigInt2Uint();
+        // require(Common.bigInt2Uint(beneficiaryRet.proposed.new_quota) == REQUIRED_QUOTA, "Invalid quota");
+        // int64 expiration = CommonTypes.ChainEpoch.unwrap(beneficiaryRet.proposed.new_expiration);
+        // uint64 uExpiration = uint64(expiration);
+        // require(expiration == REQUIRED_EXPIRATION && uExpiration > block.number, "Invalid expiration time");
+        // require(uint(keccak256(abi.encode(MinerAPI.getOwner(minerId).owner.data))) == 
+        // uint(keccak256(abi.encode(beneficiaryRet.active.beneficiary.data))), "Beneficiary is not owner");
 
-        // change beneficiary to contract
-        MinerAPI.changeBeneficiary(minerId, MinerTypes.ChangeBeneficiaryParams({
-            new_beneficiary: beneficiaryRet.proposed.new_beneficiary,
-            new_quota: beneficiaryRet.proposed.new_quota,
-            new_expiration: beneficiaryRet.proposed.new_expiration
-        }));
+        // // change beneficiary to contract
+        // MinerAPI.changeBeneficiary(minerId, MinerTypes.ChangeBeneficiaryParams({
+        //     new_beneficiary: beneficiaryRet.proposed.new_beneficiary,
+        //     new_quota: beneficiaryRet.proposed.new_quota,
+        //     new_expiration: beneficiaryRet.proposed.new_expiration
+        // }));
         
         Miner memory miner = Miner ({
             minerId: minerId,
@@ -255,9 +256,7 @@ contract SPexBeneficiary {
 
         require(miner.lenders.length <= miner.maxLenderCount, "Lenders list too long");
         require(msg.value >= miner.minLendAmount, "Lend amount smaller than minimum allowed");
-        if (_loans[msg.sender][minerId].lastUpdateTime == 0){
-            miner.lenders.push(msg.sender);
-        }
+        
         uint minerTotalDebtAmount = _updateMinerDebtAmounts(minerId);
         require((miner.principalAmount + msg.value) <= miner.maxDebtAmount, "Debt amount after lend large than allowed by miner");
 
@@ -517,6 +516,10 @@ contract SPexBeneficiary {
         Loan storage loan = _loans[lender][minerId];
         totalAmountOwed = Common.calculatePrincipalAndInterest(loan.lastAmount, loan.lastUpdateTime, block.timestamp, _miners[minerId].loanInterestRate, RATE_BASE);
         principal = loan.principalAmount;
+    }
+
+    function getMiner(CommonTypes.FilActorId minerId) public view returns(Miner memory) {
+        return _miners[minerId];
     }
 
     modifier onlyFoundation {
