@@ -270,11 +270,6 @@ contract SPexBeneficiary {
         emit EventLendToMiner(msg.sender, minerId, msg.value);
     }
 
-    function getBalance(CommonTypes.FilActorId minerId) external view returns (uint) {
-        uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(minerId);
-        return FilAddress.toAddress(minerIdUint64).balance;
-    }
-
     function sellLoan(CommonTypes.FilActorId minerId, uint ceilingAmount, uint pricePerFil) public {
         require(_sales[msg.sender][minerId].amountRemaining == 0, "Sale already exists");
         SellItem memory sellItem = SellItem({
@@ -421,6 +416,9 @@ contract SPexBeneficiary {
     function _reduceOwedAmounts(address lender, CommonTypes.FilActorId minerId, uint amount) internal returns (uint amountRepaid) {
         Loan storage loan = _loans[lender][minerId];
         Miner storage miner = _miners[minerId];
+
+        require(loan.lastUpdateTime == block.timestamp, "the loan not update");
+
         if (amount < loan.lastAmount) { //Payed less than total amount owed to lender
             amountRepaid = amount;
             loan.lastAmount -= amount;
@@ -453,6 +451,10 @@ contract SPexBeneficiary {
         Loan storage loan = _loans[lender][minerId];
         Miner storage miner = _miners[minerId];
 
+        if (loan.lastUpdateTime != 0) {
+            require(loan.lastUpdateTime == block.timestamp, "loan not update");
+        }
+
         if (loan.lastAmount == 0) {
             miner.lenders.push(lender);
         }
@@ -460,6 +462,7 @@ contract SPexBeneficiary {
         miner.principalAmount += amount;
         loan.principalAmount += amount;
         loan.lastAmount += amount;
+        loan.lastUpdateTime = block.timestamp;
 
     }
 
@@ -469,10 +472,7 @@ contract SPexBeneficiary {
             currentDebtAmount += _updateLenderOwedAmount(lenders[i], minerId);
         }
     }
-    function getBlockTimestamp() public view returns (uint) {
-        return block.timestamp;
-        
-    }
+    
     function _updateLenderOwedAmount(address lender, CommonTypes.FilActorId minerId) public returns (uint currentOwedAmount) {
         uint blockTimestamp = block.timestamp;
         Loan storage loan = _loans[lender][minerId];
@@ -500,6 +500,10 @@ contract SPexBeneficiary {
         Loan storage loan = _loans[lender][minerId];
         totalAmountOwed = Common.calculatePrincipalAndInterest(loan.lastAmount, loan.lastUpdateTime, block.timestamp, _miners[minerId].loanInterestRate, RATE_BASE);
         principal = loan.principalAmount;
+    }
+
+    function getMiner(CommonTypes.FilActorId minerId) public view returns(Miner memory) {
+        return _miners[minerId];
     }
 
     modifier onlyFoundation {
