@@ -20,7 +20,7 @@ const { assert } = require("console");
 const { transaction } = require("@openzeppelin/test-helpers/src/send");
 const { duration } = require("@openzeppelin/test-helpers/src/time");
 
-const case_1 = require("./cases/case_3");
+const case_1 = require("./cases/case_4");
 
 const ONE_ETHER = BigInt(1e18);
 
@@ -143,7 +143,7 @@ describe("Contracts", function () {
   //   }
 
   function checkParams(expectParams, chainParams) {
-    console.log("expectParams: ", expectParams)
+    console.log("expectParams: ", expectParams);
     if (Array.isArray(expectParams)) {
       if (expectParams.length != chainParams.length) {
         throw `expectParams.length != chainParams.length ${expectParams.length} != ${chainParams.length}`;
@@ -215,8 +215,11 @@ describe("Contracts", function () {
         `0x${lastTimestamp.toString(16)}`,
       ]);
 
-      let mineBlockNumberHex = `0x${(1000 - blockNumber).toString(16)}`
-      await hre.network.provider.send("hardhat_mine", [mineBlockNumberHex, "0x1"]);
+      let mineBlockNumberHex = `0x${(1000 - blockNumber).toString(16)}`;
+      await hre.network.provider.send("hardhat_mine", [
+        mineBlockNumberHex,
+        "0x1",
+      ]);
 
       blockNumber = await ethers.provider.getBlockNumber();
       console.log("blockNumber: ", blockNumber);
@@ -254,19 +257,15 @@ describe("Contracts", function () {
           [step.functionName](...newParams, { value: step.value });
         let result = await tx.wait();
 
-        lastTimestamp = (await ethers.provider.getBlock()).timestamp;
-        console.log("lastTimestamp4: ", lastTimestamp);
-
-        // let miner = await contract._miners(10323231)
-        // console.log("miner: ", miner)
-
         let block = await ethers.provider.getBlock();
         let blockTmestamp = (await ethers.provider.getBlock()).timestamp;
         console.log(
           "block.number: ",
           block.number,
           "blockTmestamp: ",
-          blockTmestamp
+          blockTmestamp,
+          "result.cumulativeGasUsed: ",
+          result.cumulativeGasUsed
         );
 
         sendTransaction = {
@@ -308,7 +307,7 @@ describe("Contracts", function () {
       let finalBalanceCheckList = case_1.CASE.finalBalanceCheckList;
 
       for (let accountInfo of finalBalanceCheckList) {
-        console.log("check account balance, accountInfo: ", accountInfo)
+        console.log("check account balance, accountInfo: ", accountInfo);
         let address = "";
         if (accountInfo.accountType == "contract") {
           address = contracts[accountInfo.contractName].target;
