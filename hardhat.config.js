@@ -53,12 +53,12 @@ module.exports = {
       ],
     },
     hardhat: {
-      // accounts: [
-      //   {
-      //     privateKey: "ec30c33546ddf1ce381e7a9be187bad34659048c182f1bd756e21d4733bd5998",
-      //     balance: "99999900000000000000000000000000"
-      //   }
-      // ]
+      accounts: [
+        {
+          privateKey: "ec30c33546ddf1ce381e7a9be187bad34659048c182f1bd756e21d4733bd5998",
+          balance: "99999900000000000000000000000000"
+        }
+      ]
     },
   },
   mocha: {

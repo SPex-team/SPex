@@ -20,7 +20,7 @@ const { assert } = require("console");
 const { transaction } = require("@openzeppelin/test-helpers/src/send");
 const { duration } = require("@openzeppelin/test-helpers/src/time");
 
-const case_1 = require("./cases/case_4");
+const case_1 = require("./cases/case_1");
 
 const ONE_ETHER = BigInt(1e18);
 
