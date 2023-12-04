@@ -19,7 +19,7 @@ import "./utils/Validator.sol";
 import "./utils/FilAddress.sol";
 
 
-/// @author Mingming Tang
+/// @author SPex Team
 contract SPexBeneficiary {
 
     event EventPledgeBeneficiaryToSpex(CommonTypes.FilActorId, address, uint, uint, address);
@@ -269,8 +269,9 @@ contract SPexBeneficiary {
         emit EventLendToMiner(msg.sender, minerId, msg.value);
     }
 
-    function sellLoan(CommonTypes.FilActorId minerId, uint ceilingAmount, uint pricePerFil) public onlyMinerDelegator(minerId) {
+    function sellLoan(CommonTypes.FilActorId minerId, uint ceilingAmount, uint pricePerFil) public {
         require(_sales[msg.sender][minerId].amountRemaining == 0, "Sale already exists");
+        require(ceilingAmount >= _miners[minerId].minLendAmount, "ceilingAmount less than minLendAmount");
         SellItem memory sellItem = SellItem({
             amountRemaining: ceilingAmount,
             pricePerFil: pricePerFil
@@ -279,7 +280,7 @@ contract SPexBeneficiary {
         emit EventSellLoan(msg.sender, minerId, ceilingAmount, pricePerFil);
     }
 
-    function modifyLoanSale(CommonTypes.FilActorId minerId, uint amount, uint price) external onlyMinerDelegator(minerId) {
+    function modifyLoanSale(CommonTypes.FilActorId minerId, uint amount, uint price) external {
         cancelLoanSale(minerId);
         sellLoan(minerId, amount, price);
     }
@@ -292,6 +293,8 @@ contract SPexBeneficiary {
     }
 
     function buyLoan(address payable seller, CommonTypes.FilActorId minerId, uint buyAmount) external payable {
+        Miner storage miner = _miners[minerId];
+        require(buyAmount >= miner.minLendAmount, "buyAmount less than minLendAmount");
         SellItem storage sellItem = _sales[seller][minerId];
         require(sellItem.amountRemaining != 0, "Sale doesn't exist");
         require(buyAmount <= sellItem.amountRemaining, "buyAmount larger than amount on sale");
@@ -309,7 +312,6 @@ contract SPexBeneficiary {
         sellerLoan.lastAmount -= buyAmount;
         sellerLoan.principalAmount -= principalChange;
 
-        Miner storage miner = _miners[minerId];
         if(sellerLoan.lastAmount == 0) {
             for (uint i = 0; i < miner.lenders.length; i++) {
                 if (miner.lenders[i] == seller) {
@@ -490,7 +492,7 @@ contract SPexBeneficiary {
         }
     }
 
-    function _updateLenderOwedAmount(address lender, CommonTypes.FilActorId minerId) internal returns (uint currentOwedAmount) {
+    function _updateLenderOwedAmount(address lender, CommonTypes.FilActorId minerId) public returns (uint currentOwedAmount) {
         uint blockTimestamp = block.timestamp;
         Loan storage loan = _loans[lender][minerId];
         currentOwedAmount = Common.calculatePrincipalAndInterest(loan.lastAmount, loan.lastUpdateTime, blockTimestamp, _miners[minerId].loanInterestRate, RATE_BASE);

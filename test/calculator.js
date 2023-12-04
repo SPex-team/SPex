@@ -25,6 +25,6 @@ console.log(getPrincipalInterest(20e18, (184923 * 30) / (86400 * 365), 0.1));
 // console.log(getPrincipalInterest(10e18, 1, 0.1))
 
 
-console.log(getInterest(20e18, (43231 + 43231 + 184923) * 30 / 31536000, 0.1))
+console.log(getInterest(20e18, (34000 + 184923) * 30 / 31536000, 0.1))
 
   

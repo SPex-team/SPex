@@ -20,7 +20,7 @@ const { assert } = require("console");
 const { transaction } = require("@openzeppelin/test-helpers/src/send");
 const { duration } = require("@openzeppelin/test-helpers/src/time");
 
-const case_1 = require("./cases/case_1");
+const case_1 = require("./cases/case_4");
 
 const ONE_ETHER = BigInt(1e18);
 
@@ -227,9 +227,16 @@ describe("Contracts", function () {
       lastTimestamp = (await ethers.provider.getBlock()).timestamp;
       console.log("lastTimestamp3: ", lastTimestamp);
 
+      let loan = await contracts["spexBeneficiary"]._loans(signers[1].address, 10323231);
+      console.log(
+        "signer address: ",
+        signer.address,
+        "loan: ",
+        loan
+      );
+
       for (stepIndex in stepList) {
         step = stepList[stepIndex];
-        console.log("signers[1].address: ", signers[1].address);
         console.log(
           `stepIndex: ${stepIndex} step.contractName: ${step.contractName} step.functionName: ${step.functionName} signerIndex: ${step.signerIndex}`
         );
@@ -256,6 +263,20 @@ describe("Contracts", function () {
           .connect(signer)
           [step.functionName](...newParams, { value: step.value });
         let result = await tx.wait();
+
+        // await contract._updateLenderOwedAmount(signer.address, 10323231);
+        // let miner = await contract._miners(10323231);
+        // let loan = await contract._loans(signers[1].address, 10323231);
+        // console.log(
+        //   "miner: ",
+        //   miner,
+        //   "signer address: ",
+        //   signer.address,
+        //   "loan: ",
+        //   loan,
+        //   "signers[1].address: ",
+        //   signers[1].address
+        // );
 
         let block = await ethers.provider.getBlock();
         let blockTmestamp = (await ethers.provider.getBlock()).timestamp;

@@ -17,7 +17,7 @@ import "./utils/Validator.sol";
 
 
 /// @title SPex is a decentralized storage provider exchange space on FVM
-/// @author Mingming Tang
+/// @author SPex Team
 contract SPex {
 
     event EventMinerInContract(CommonTypes.FilActorId minerId, address owner);
