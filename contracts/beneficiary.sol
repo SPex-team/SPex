@@ -496,7 +496,7 @@ contract SPexBeneficiary {
     }
 
     function changeFeeRate(uint newFeeRate) external onlyFoundation {
-        require(newFeeRate <= MAX_FEE_RATE, "Fee rate must less than or equal to MAX_FEE_RATE");
+        require(newFeeRate <= MAX_FEE_RATE, "Fee rate must be less than or equal to MAX_FEE_RATE");
         _feeRate = newFeeRate;
     }
 
