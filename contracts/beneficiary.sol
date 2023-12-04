@@ -18,7 +18,7 @@ import "./utils/Common.sol";
 import "./utils/Validator.sol";
 
 
-/// @author Mingming Tang
+/// @author Mingming Tang & Tianxiao Cao
 contract SPexBeneficiary {
 
     event EventPledgeBeneficiaryToSpex(CommonTypes.FilActorId, address, uint, uint, address);
