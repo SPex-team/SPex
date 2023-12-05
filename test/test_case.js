@@ -20,7 +20,7 @@ const { assert } = require("console");
 const { transaction } = require("@openzeppelin/test-helpers/src/send");
 const { duration } = require("@openzeppelin/test-helpers/src/time");
 
-const case_1 = require("./cases/case_4");
+const case_1 = require("./cases/case_3");
 
 const ONE_ETHER = BigInt(1e18);
 
@@ -314,11 +314,11 @@ describe("Contracts", function () {
           .connect(signer)
           [step.functionName](...newParams, { value: step.value });
 
-        console.log("results: ", results);
-        console.log("results.lenders: ", results.lenders);
+        // console.log("results: ", results);
+        // console.log("results.lenders: ", results.lenders);
 
-        let miner = await contract._miners(10323231);
-        console.log("miner: ", miner);
+        // let miner = await contract._miners(10323231);
+        // console.log("miner: ", miner);
 
         const processedResults = getProcessedParams(step.results, signers);
 
@@ -339,7 +339,18 @@ describe("Contracts", function () {
         }
 
         let balance = await ethers.provider.getBalance(address);
-        if (balance != accountInfo.expectBalance) {
+
+        if (accountInfo.tolaranceRange !== undefined && accountInfo.tolaranceRange != null) {
+            let diff = balance - accountInfo.expectBalance
+            diff = Number(diff)
+            balance = Number(balance)
+            expectBalance = Number(accountInfo.expectBalance)
+            let tolaranceRange = Math.max(balance, expectBalance) / Math.abs(diff)
+            if (tolaranceRange > accountInfo.tolaranceRange) {
+                throw `balance is not equal accountInfo.contractName: ${accountInfo.contractName} accountInfo.accountIndex: ${accountInfo.accountIndex} chain balance: ${balance} expect balance: ${accountInfo.expectBalance} Actual tolaranceRange: ${tolaranceRange}`;     
+            }
+        }
+        else if (balance != accountInfo.expectBalance) {
           throw `balance is not equal accountInfo.contractName: ${accountInfo.contractName} accountInfo.accountIndex: ${accountInfo.accountIndex} chain balance: ${balance} expect balance: ${accountInfo.expectBalance}`;
         }
 

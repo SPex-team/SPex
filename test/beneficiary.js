@@ -65,8 +65,6 @@ async function pledgeSomeMiners(spexBeneficiary) {
 }
 
 describe("SPexBeneficiary", function () {
-  console.log("ethers.constants.ethers: ", ethers.constants);
-
   // We define a fixture to reuse the same setup in every test.
   // We use loadFixture to run this setup once, snapshot that state,
   // and reset Hardhat Network to that snapshot in every test.
@@ -91,8 +89,7 @@ describe("SPexBeneficiary", function () {
     const spexBeneficiary = await SPexBeneficiary.deploy(
       owner.address,
       INIT_MAX_DEBT_RATE,
-      FEE_RATE,
-      MINI_LEND_AMOUNT
+      FEE_RATE
     );
     return { spexBeneficiary, owner, otherAccount };
   }
@@ -507,7 +504,7 @@ describe("SPexBeneficiary", function () {
     });
 
     describe("lendToMiner", async function () {
-      it("Interest rate lower than expected", async function () {
+      it("Interest rate not equal to expected", async function () {
         const { spexBeneficiary, owner, otherAccount } = await loadFixture(
           deploySPexBeneficiary
         );
@@ -515,9 +512,9 @@ describe("SPexBeneficiary", function () {
         let signers = await ethers.getSigners();
         let result = spexBeneficiary
           .connect(signers[10])
-          .lendToMiner(10, ONE_ETHER * 1, 140000);
+          .lendToMiner(10, 140000, { value: ONE_ETHER * 1n });
         await expect(result).to.be.revertedWith(
-          "Interest rate lower than expected"
+          "Interest rate not equal to expected"
         );
       });
       it("Lending for this miner is disabled", async function () {
@@ -525,6 +522,7 @@ describe("SPexBeneficiary", function () {
           deploySPexBeneficiary
         );
         let signers = await ethers.getSigners();
+        let nowTimestamp = Math.floor(Date.now() / 1000);
         await spexBeneficiary.pledgeBeneficiaryToSpex(
           19,
           "0x12",
@@ -538,7 +536,7 @@ describe("SPexBeneficiary", function () {
         );
         let result = spexBeneficiary
           .connect(signers[10])
-          .lendToMiner(19, ONE_ETHER * 1, 150000);
+          .lendToMiner(19, 150000, { value: ONE_ETHER * 1n });
         await expect(result).to.be.revertedWith(
           "Lending for this miner is disabled"
         );
@@ -551,17 +549,17 @@ describe("SPexBeneficiary", function () {
         await pledgeSomeMiners(spexBeneficiary);
         let signers = await ethers.getSigners();
         await spexBeneficiary
-          .connect(signers[10])
-          .lendToMiner(10, ONE_ETHER * 2, 150000);
+          .connect(signers[15])
+          .lendToMiner(10, 150000, { value: ONE_ETHER * 1n });
         await spexBeneficiary
-          .connect(signers[10])
-          .lendToMiner(10, ONE_ETHER * 2, 150000);
+          .connect(signers[16])
+          .lendToMiner(10, 150000, { value: ONE_ETHER * 1n });
         await spexBeneficiary
-          .connect(signers[10])
-          .lendToMiner(10, ONE_ETHER * 2, 150000);
+          .connect(signers[17])
+          .lendToMiner(10, 150000, { value: ONE_ETHER * 1n });
         let result = spexBeneficiary
-          .connect(signers[10])
-          .lendToMiner(10, ONE_ETHER * 2, 150000);
+          .connect(signers[18])
+          .lendToMiner(10, 150000, { value: ONE_ETHER * 1n });
         await expect(result).to.be.revertedWith("Lenders list too long");
       });
 
@@ -573,7 +571,7 @@ describe("SPexBeneficiary", function () {
         let signers = await ethers.getSigners();
         let result = spexBeneficiary
           .connect(signers[10])
-          .lendToMiner(10, BigInt(1e17), 150000);
+          .lendToMiner(10, 150000, { value: BigInt(1e17) });
         await expect(result).to.be.revertedWith(
           "Lend amount smaller than minimum allowed"
         );
@@ -583,6 +581,7 @@ describe("SPexBeneficiary", function () {
           deploySPexBeneficiary
         );
         let signers = await ethers.getSigners();
+        let nowTimestamp = Math.floor(Date.now() / 1000);
         await spexBeneficiary.pledgeBeneficiaryToSpex(
           19,
           "0x12",
@@ -590,13 +589,13 @@ describe("SPexBeneficiary", function () {
           22n * ONE_ETHER,
           150000,
           signers[11].address,
-          true,
+          false,
           3,
           ONE_ETHER * 1n
         );
         await spexBeneficiary
           .connect(signers[10])
-          .lendToMiner(19, ONE_ETHER * 21, 150000);
+          .lendToMiner(19, 150000, { value: ONE_ETHER * 21n });
         let mineBlockNumberHex = `0x${(1051200).toString(16)}`;
         await hre.network.provider.send("hardhat_mine", [
           mineBlockNumberHex,
@@ -604,7 +603,7 @@ describe("SPexBeneficiary", function () {
         ]);
         let result = spexBeneficiary
           .connect(signers[10])
-          .lendToMiner(19, ONE_ETHER * 1, 150000);
+          .lendToMiner(19, 150000, { value: ONE_ETHER * 1n });
         await expect(result).to.be.revertedWith(
           "Debt rate of miner after lend larger than allowed"
         );
@@ -618,11 +617,226 @@ describe("SPexBeneficiary", function () {
         let signers = await ethers.getSigners();
         let result = spexBeneficiary
           .connect(signers[10])
-          .lendToMiner(10, ONE_ETHER * 100, 150000);
+          .lendToMiner(10, 150000, { value: ONE_ETHER * 100n });
         await expect(result).to.be.revertedWith(
           "Debt amount after lend large than allowed by miner"
         );
       });
     });
+
+    async function sellLoanPreSteps(spexBeneficiary) {
+      await pledgeSomeMiners(spexBeneficiary);
+      let signers = await ethers.getSigners();
+      await spexBeneficiary
+        .connect(signers[10])
+        .lendToMiner(200, 120000, { value: ONE_ETHER * 5n });
+
+      await spexBeneficiary
+        .connect(signers[10])
+        .sellLoan(200, ONE_ETHER * 3n, BigInt(95e16));
+    }
+
+    describe("sellLoan", async function () {
+
+      it("Loan does not exist", async function () {
+        const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+          deploySPexBeneficiary
+        );
+        let signers = await ethers.getSigners();
+        let result = spexBeneficiary
+          .connect(signers[10])
+          .sellLoan(200, ONE_ETHER * 3n, BigInt(95e16));
+        await expect(result).to.be.revertedWith("Loan does not exist");
+      });
+
+      it("Sale already exists", async function () {
+        const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+          deploySPexBeneficiary
+        );
+        await sellLoanPreSteps(spexBeneficiary);
+        let signers = await ethers.getSigners();
+        let result = spexBeneficiary
+          .connect(signers[10])
+          .sellLoan(200, ONE_ETHER * 3n, BigInt(95e16));
+        await expect(result).to.be.revertedWith("Sale already exists");
+      });
+
+      it("ceilingAmount less than minLendAmount", async function () {
+        const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+          deploySPexBeneficiary
+        );
+        await pledgeSomeMiners(spexBeneficiary);
+        let signers = await ethers.getSigners();
+        await spexBeneficiary
+          .connect(signers[10])
+          .lendToMiner(200, 120000, { value: ONE_ETHER * 5n });
+        let result = spexBeneficiary
+          .connect(signers[10])
+          .sellLoan(200, ONE_ETHER * 1n, BigInt(95e16));
+        await expect(result).to.be.revertedWith(
+          "ceilingAmount less than minLendAmount"
+        );
+      });
+
+      it("EventSellLoan", async function () {
+        const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+          deploySPexBeneficiary
+        );
+        await pledgeSomeMiners(spexBeneficiary);
+        let signers = await ethers.getSigners();
+        await spexBeneficiary
+          .connect(signers[10])
+          .lendToMiner(200, 120000, { value: ONE_ETHER * 5n });
+
+        let result = spexBeneficiary
+          .connect(signers[10])
+          .sellLoan(200, ONE_ETHER * 30n, BigInt(95e16));
+
+        await expect(result)
+          .to.emit(spexBeneficiary, "EventSellLoan")
+          .withArgs(signers[10].address, 200, ONE_ETHER * 30n, BigInt(95e16));
+      });
+
+      it("Normal test", async function () {
+        const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+          deploySPexBeneficiary
+        );
+        let signers = await ethers.getSigners();
+        await sellLoanPreSteps(spexBeneficiary);
+        let miner = await spexBeneficiary.getMiner(200);
+        expect(miner.lenders.length).to.equal(1);
+
+        let sellItem = await spexBeneficiary._sales(signers[10].address, 200)
+        expect(sellItem.amountRemaining).to.equal(ONE_ETHER * 3n)
+        expect(sellItem.pricePerFil).to.equal(BigInt(95e16))
+
+        // let mineBlockNumberHex = `0x${(1051200).toString(16)}`;
+        // await hre.network.provider.send("hardhat_mine", [
+        //   mineBlockNumberHex,
+        //   "0x1e",
+        // ]);
+
+        // await spexBeneficiary
+        //   .connect(signers[11])
+        //   .buyLoan(signers[10].address, ONE_ETHER * 3n, BigInt(95e16));
+
+        // miner = await spexBeneficiary.getMiner(200);
+        // expect(miner.lenders.length).to.equal(2);
+
+        // await spexBeneficiary
+        //   .connect(signers[12])
+        //   .sellLoan(200, ONE_ETHER * 30n, BigInt(95e16));
+        // miner = await spexBeneficiary.getMiner(200);
+        // expect(miner.lenders.length).to.equal(0);
+        // await expect(result).to.be.revertedWith("Sale already exists");
+      });
+    });
+
+    describe("modifyLoanSale", async function () {
+      it("Normal Test", async function () {
+        const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+          deploySPexBeneficiary
+        );
+        await sellLoanPreSteps(spexBeneficiary)
+        let signers = await ethers.getSigners();
+        let result = spexBeneficiary
+          .connect(signers[10])
+          .modifyLoanSale(10, 140000, { value: ONE_ETHER * 1n });
+        let miner = await spexBeneficiary._(200);
+        expect(miner.lenders.length).to.equal(1);
+        await expect(result).to.be.revertedWith("xxxxxxxxxx");
+      });
+
+      it("xxxxxxxxxxx", async function () {
+        const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+          deploySPexBeneficiary
+        );
+        
+        await pledgeSomeMiners(spexBeneficiary);
+        let signers = await ethers.getSigners();
+        let result = spexBeneficiary
+          .connect(signers[10])
+          .xxxxxxxxxx(10, 140000, { value: ONE_ETHER * 1n });
+        await expect(result).to.be.revertedWith("xxxxxxxxxx");
+      });
+    });
+
+    // describe("xxxxxxx", async function () {
+    //   it("xxxxxxxxxxx", async function () {
+    //     const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+    //       deploySPexBeneficiary
+    //     );
+    //     await pledgeSomeMiners(spexBeneficiary);
+    //     let signers = await ethers.getSigners();
+    //     let result = spexBeneficiary
+    //       .connect(signers[10])
+    //       .xxxxxxxxxx(10, 140000, { value: ONE_ETHER * 1n });
+    //     await expect(result).to.be.revertedWith("xxxxxxxxxx");
+    //   });
+
+    //   it("xxxxxxxxxxx", async function () {
+    //     const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+    //       deploySPexBeneficiary
+    //     );
+    //     await pledgeSomeMiners(spexBeneficiary);
+    //     let signers = await ethers.getSigners();
+    //     let result = spexBeneficiary
+    //       .connect(signers[10])
+    //       .xxxxxxxxxx(10, 140000, { value: ONE_ETHER * 1n });
+    //     await expect(result).to.be.revertedWith("xxxxxxxxxx");
+    //   });
+    // });
+
+    // describe("xxxxxxx", async function () {
+    //   it("xxxxxxxxxxx", async function () {
+    //     const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+    //       deploySPexBeneficiary
+    //     );
+    //     await pledgeSomeMiners(spexBeneficiary);
+    //     let signers = await ethers.getSigners();
+    //     let result = spexBeneficiary
+    //       .connect(signers[10])
+    //       .xxxxxxxxxx(10, 140000, { value: ONE_ETHER * 1n });
+    //     await expect(result).to.be.revertedWith("xxxxxxxxxx");
+    //   });
+
+    //   it("xxxxxxxxxxx", async function () {
+    //     const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+    //       deploySPexBeneficiary
+    //     );
+    //     await pledgeSomeMiners(spexBeneficiary);
+    //     let signers = await ethers.getSigners();
+    //     let result = spexBeneficiary
+    //       .connect(signers[10])
+    //       .xxxxxxxxxx(10, 140000, { value: ONE_ETHER * 1n });
+    //     await expect(result).to.be.revertedWith("xxxxxxxxxx");
+    //   });
+    // });
+
+    // describe("xxxxxxx", async function () {
+    //   it("xxxxxxxxxxx", async function () {
+    //     const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+    //       deploySPexBeneficiary
+    //     );
+    //     await pledgeSomeMiners(spexBeneficiary);
+    //     let signers = await ethers.getSigners();
+    //     let result = spexBeneficiary
+    //       .connect(signers[10])
+    //       .xxxxxxxxxx(10, 140000, { value: ONE_ETHER * 1n });
+    //     await expect(result).to.be.revertedWith("xxxxxxxxxx");
+    //   });
+
+    //   it("xxxxxxxxxxx", async function () {
+    //     const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+    //       deploySPexBeneficiary
+    //     );
+    //     await pledgeSomeMiners(spexBeneficiary);
+    //     let signers = await ethers.getSigners();
+    //     let result = spexBeneficiary
+    //       .connect(signers[10])
+    //       .xxxxxxxxxx(10, 140000, { value: ONE_ETHER * 1n });
+    //     await expect(result).to.be.revertedWith("xxxxxxxxxx");
+    //   });
+    // });
   });
 });

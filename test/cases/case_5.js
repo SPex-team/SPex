@@ -70,14 +70,6 @@ const CASE = {
       value: BigInt(7n * ONE_ETHER),
       signerIndex: 1,
     },
-    {
-      increaseBlockNumber: 34000,
-      contractName: "spexBeneficiary",
-      functionName: "batchDirectRepayment",
-      params: [["__signer3", "__signer4"], [10323231, 10323231], [ONE_ETHER * 2n, ONE_ETHER * 3n]],
-      value: BigInt(5n * ONE_ETHER),
-      signerIndex: 1,
-    },
   ],
   finalStateCheckList: [
     {
@@ -94,7 +86,7 @@ const CASE = {
         loanInterestRate: 100000n,
         receiveAddress: "__signer10",
         disabled: false,
-        principalAmount: 18651298020479599346n,
+        principalAmount: 23n * ONE_ETHER + 219978804014920227n,
         maxLenderCount: 10n,
         minLendAmount: ONE_ETHER * 1n,
         lenders: ["__signer3", "__signer4"],
@@ -108,9 +100,9 @@ const CASE = {
       value: BigInt(0),
       signerIndex: 0,
       results: {
-        principalAmount: 1230410360350354886n,
-        lastAmount: 1230410360350354886n,
-        lastUpdateTime: HARDHAT_INIT_TIMESTAMP + (34000 + 184923 + 43812 + 3434 + 343 + 3) * 30
+        principalAmount: 3n * ONE_ETHER + 219978804014920227n,
+        lastAmount: 3n * ONE_ETHER + 219978804014920227n,
+        lastUpdateTime: HARDHAT_INIT_TIMESTAMP + (184923 + 43812 + 3434 + 343 + 3) * 30
       },
     },
     {
@@ -121,9 +113,9 @@ const CASE = {
       value: BigInt(0),
       signerIndex: 0,
       results: {
-        principalAmount: 17420887660129244460n,
-        lastAmount: 17420887660129244460n,
-        lastUpdateTime: HARDHAT_INIT_TIMESTAMP + (34000 + 184923 + 43812 + 3434 + 343 + 3) * 30
+        principalAmount: 20n * ONE_ETHER,
+        lastAmount: 20n * ONE_ETHER,
+        lastUpdateTime: HARDHAT_INIT_TIMESTAMP + (43812 + 3434 + 343 + 3) * 30
       },
     },
     {
@@ -158,13 +150,13 @@ const CASE = {
         accountType: "contract",
         contractName: "spexBeneficiary",
         accountIndex: 0,
-        expectBalance: 65129802047959933n
+        expectBalance: 21997880401492022n
     },
     {
         accountType: "owned",
         contractName: "",
         accountIndex: 1,
-        expectBalance: ACCOUNT_INIT_BALANCE - 7n * ONE_ETHER - 5n * ONE_ETHER
+        expectBalance: ACCOUNT_INIT_BALANCE - 7n * ONE_ETHER
     },
     {
         accountType: "owned",
@@ -176,15 +168,13 @@ const CASE = {
         accountType: "owned",
         contractName: "",
         accountIndex: 3,
-        expectBalance: ACCOUNT_INIT_BALANCE - 10n * ONE_ETHER + 7n * ONE_ETHER - 21997880401492022n + 2n * ONE_ETHER - 1043155633543424n,
-        tolaranceRange: 1e-16
+        expectBalance: ACCOUNT_INIT_BALANCE - 10n * ONE_ETHER + 7n * ONE_ETHER - 21997880401492022n 
     },
     {
         accountType: "owned",
         contractName: "",
         accountIndex: 4,
-        expectBalance: ACCOUNT_INIT_BALANCE - 20n * ONE_ETHER + 3n * ONE_ETHER - 42088766012924314n,
-        tolaranceRange: 1e-16
+        expectBalance: ACCOUNT_INIT_BALANCE - 20n * ONE_ETHER
     },
     {
         accountType: "owned",

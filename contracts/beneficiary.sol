@@ -71,7 +71,6 @@ contract SPexBeneficiary {
     address public _foundation;
     uint public _feeRate;
     uint public _maxDebtRate;
-    uint public _minLendAmount;
 
     uint constant public MAX_FEE_RATE = 200000;
     uint constant public RATE_BASE = 1000000;
@@ -79,13 +78,12 @@ contract SPexBeneficiary {
     uint constant public REQUIRED_QUOTA = 1e68 - 1e18;
     int64 constant public REQUIRED_EXPIRATION = type(int64).max;
 
-    constructor(address foundation, uint maxDebtRate, uint feeRate, uint minLendAmount) {
+    constructor(address foundation, uint maxDebtRate, uint feeRate) {
         require(foundation != address(0), "Foundation address cannot be zero address");
         require(feeRate <= MAX_FEE_RATE, "Fee rate must less than or equal to MAX_FEE_RATE");
         _foundation = foundation;
         _maxDebtRate = maxDebtRate;
         _feeRate = feeRate;
-        _minLendAmount = minLendAmount;
     }
 
     function _validateTimestamp(uint timestamp) internal {
@@ -252,10 +250,10 @@ contract SPexBeneficiary {
 
     function lendToMiner(CommonTypes.FilActorId minerId, uint expectedInterestRate) external payable {
         Miner storage miner = _miners[minerId];
-        require(expectedInterestRate <= miner.loanInterestRate, "Interest rate lower than expected");
+        require(expectedInterestRate == miner.loanInterestRate, "Interest rate not equal to expected");
         require(miner.disabled == false, "Lending for this miner is disabled");
 
-        require(miner.lenders.length <= miner.maxLenderCount, "Lenders list too long");
+        require(miner.lenders.length < miner.maxLenderCount, "Lenders list too long");
         require(msg.value >= miner.minLendAmount, "Lend amount smaller than minimum allowed");
         
         uint minerTotalDebtAmount = _updateMinerDebtAmounts(minerId);
@@ -270,6 +268,7 @@ contract SPexBeneficiary {
     }
 
     function sellLoan(CommonTypes.FilActorId minerId, uint ceilingAmount, uint pricePerFil) public {
+        require(_loans[msg.sender][minerId].lastAmount > 0, "Loan does not exist");
         require(_sales[msg.sender][minerId].amountRemaining == 0, "Sale already exists");
         require(ceilingAmount >= _miners[minerId].minLendAmount, "ceilingAmount less than minLendAmount");
         SellItem memory sellItem = SellItem({
@@ -292,10 +291,11 @@ contract SPexBeneficiary {
         emit EventCancelSellLoan(msg.sender, minerId);
     }
 
-    function buyLoan(address payable seller, CommonTypes.FilActorId minerId, uint buyAmount) external payable {
+    function buyLoan(address payable seller, CommonTypes.FilActorId minerId, uint buyAmount, uint expectedPricePerFil) external payable {
         Miner storage miner = _miners[minerId];
         require(buyAmount >= miner.minLendAmount, "buyAmount less than minLendAmount");
         SellItem storage sellItem = _sales[seller][minerId];
+        require(sellItem.pricePerFil == expectedPricePerFil, "Price not equal to expected");
         require(sellItem.amountRemaining != 0, "Sale doesn't exist");
         require(buyAmount <= sellItem.amountRemaining, "buyAmount larger than amount on sale");
         uint requiredPayment = sellItem.pricePerFil * buyAmount / 1 ether;
@@ -324,6 +324,7 @@ contract SPexBeneficiary {
         }
         if (buyerLoan.lastAmount == 0) {
             buyerLoan.lastUpdateTime = block.timestamp;
+            require(miner.lenders.length < miner.maxLenderCount, "Lenders list too long");
             miner.lenders.push(msg.sender);
         }
         buyerLoan.lastAmount += buyAmount;
@@ -335,7 +336,6 @@ contract SPexBeneficiary {
         }
         
         payable(seller).transfer(requiredPayment);
-
         emit EventBuyLoan(msg.sender, seller, minerId, buyAmount, sellItem.pricePerFil);
     }
 
@@ -542,10 +542,6 @@ contract SPexBeneficiary {
     function changeFeeRate(uint newFeeRate) external onlyFoundation {
         require(newFeeRate <= MAX_FEE_RATE, "Fee rate must less than or equal to MAX_FEE_RATE");
         _feeRate = newFeeRate;
-    }
-
-    function changeMinLendAmount(uint newMinLendAmount) external onlyFoundation {
-        _minLendAmount = newMinLendAmount;
     }
 
     function withdraw(address payable to, uint amount) external payable onlyFoundation {
