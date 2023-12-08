@@ -284,7 +284,7 @@ contract SPexBeneficiary {
         sellLoan(minerId, amount, price);
     }
 
-    function cancelLoanSale(CommonTypes.FilActorId minerId) public onlyMinerDelegator(minerId) {
+    function cancelLoanSale(CommonTypes.FilActorId minerId) public {
         SellItem storage sellItem = _sales[msg.sender][minerId];
         require(sellItem.amountRemaining > 0, "Sale don't exist");
         delete _sales[msg.sender][minerId];
@@ -339,13 +339,6 @@ contract SPexBeneficiary {
         emit EventBuyLoan(msg.sender, seller, minerId, buyAmount, sellItem.pricePerFil);
     }
 
-    function _treatSaleOfRepaidLoan(address lender, CommonTypes.FilActorId minerId, uint actualRepaymentAmount) internal {
-        SellItem storage sellItem =  _sales[lender][minerId];
-        if (sellItem.amountRemaining > 0) {
-            sellItem.amountRemaining = actualRepaymentAmount >= sellItem.amountRemaining ? 0 : sellItem.amountRemaining - actualRepaymentAmount;
-        }
-    }
-
     function withdrawRepayment(address payable lender, CommonTypes.FilActorId minerId, uint amount) public returns (uint actualRepaymentAmount) {
         Miner storage miner = _miners[minerId];
         require(msg.sender == lender || msg.sender == miner.delegator, "You are not lender or delegator of the miner");
@@ -353,7 +346,6 @@ contract SPexBeneficiary {
         uint owedInterest = _updateLenderOwedAmount(lender, minerId) - _loans[lender][minerId].principalAmount;
         actualRepaymentAmount = _reduceOwedAmounts(lender, minerId, amount);
         uint repaiedInterest = actualRepaymentAmount >= owedInterest ? owedInterest : actualRepaymentAmount;
-        _treatSaleOfRepaidLoan(lender, minerId, actualRepaymentAmount);
 
         CommonTypes.BigInt memory amountBigInt = Common.uint2BigInt(actualRepaymentAmount);
         CommonTypes.BigInt memory actuallyAmountBitInt = MinerAPI.withdrawBalance(minerId, amountBigInt);
@@ -390,7 +382,6 @@ contract SPexBeneficiary {
         uint owedInterest = _updateLenderOwedAmount(lender, minerId) - _loans[lender][minerId].principalAmount;
         actualRepaymentAmount = _reduceOwedAmounts(lender, minerId, amount);
         uint repaiedInterest = actualRepaymentAmount >= owedInterest ? owedInterest : actualRepaymentAmount;
-        _treatSaleOfRepaidLoan(lender, minerId, actualRepaymentAmount);
         _transferRepayment(lender, actualRepaymentAmount, repaiedInterest);
         emit EventRepayment(msg.sender, lender, minerId, actualRepaymentAmount);
     }
@@ -450,7 +441,6 @@ contract SPexBeneficiary {
                 if (miner.lenders[i] == lender) {
                     miner.lenders[i] = miner.lenders[miner.lenders.length - 1];
                     miner.lenders.pop();
-                    delete _loans[lender][minerId];
                     break;
                 }
             }
@@ -458,9 +448,14 @@ contract SPexBeneficiary {
 
         //The user have payed back more than interest in this case, so all remaining debt are principal
         if (loan.lastAmount < loan.principalAmount) {
-            miner.principalAmount -= loan.principalAmount - loan.lastAmount;
+            miner.principalAmount -= (loan.principalAmount - loan.lastAmount);
             loan.principalAmount = loan.lastAmount;
         }
+
+        if (loan.lastAmount == 0) {
+            delete _loans[lender][minerId];
+        }
+
     }
 
     function _increaseOwedAmounts(address lender, CommonTypes.FilActorId minerId, uint amount) internal {
