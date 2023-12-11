@@ -646,6 +646,9 @@ describe("SPexBeneficiary", function () {
         .connect(signers[10])
         .lendToMiner(200, 120000, { value: ONE_ETHER * 5n });
 
+      // let lastTimestamp = (await ethers.provider.getBlock()).timestamp;
+      // console.log("lastTimestamp: ", lastTimestamp);
+
       await spexBeneficiary
         .connect(signers[10])
         .sellLoan(200, ONE_ETHER * 3n, BigInt(95e16));
@@ -820,7 +823,9 @@ describe("SPexBeneficiary", function () {
         await expect(result).to.be.revertedWith("Price not equal to expected");
         result = spexBeneficiary
           .connect(signers[15])
-          .buyLoan(signers[10].address, 200, ONE_ETHER * 2n, BigInt(9e16), { value: BigInt(19e17) });
+          .buyLoan(signers[10].address, 200, ONE_ETHER * 2n, BigInt(9e16), {
+            value: BigInt(19e17),
+          });
         await expect(result).to.be.revertedWith("Price not equal to expected");
       });
 
@@ -880,7 +885,7 @@ describe("SPexBeneficiary", function () {
           });
         await expect(result).to.be.revertedWith("Insufficient owed amount");
       });
-      
+
       it("Lenders list too long", async function () {
         const { spexBeneficiary, owner, otherAccount } = await loadFixture(
           deploySPexBeneficiary
@@ -888,14 +893,14 @@ describe("SPexBeneficiary", function () {
         await sellLoanPreSteps(spexBeneficiary);
         let signers = await ethers.getSigners();
         await spexBeneficiary
-        .connect(signers[11])
-        .lendToMiner(200, 120000, { value: ONE_ETHER * 5n });
+          .connect(signers[11])
+          .lendToMiner(200, 120000, { value: ONE_ETHER * 5n });
         await spexBeneficiary
-        .connect(signers[12])
-        .lendToMiner(200, 120000, { value: ONE_ETHER * 5n });
+          .connect(signers[12])
+          .lendToMiner(200, 120000, { value: ONE_ETHER * 5n });
         await spexBeneficiary
-        .connect(signers[13])
-        .lendToMiner(200, 120000, { value: ONE_ETHER * 5n });
+          .connect(signers[13])
+          .lendToMiner(200, 120000, { value: ONE_ETHER * 5n });
 
         let result = spexBeneficiary
           .connect(signers[14])
@@ -911,6 +916,18 @@ describe("SPexBeneficiary", function () {
         );
         await sellLoanPreSteps(spexBeneficiary);
         let signers = await ethers.getSigners();
+        let mineBlockNumberHex = `0x${(1051200).toString(16)}`;
+        await hre.network.provider.send("hardhat_mine", [
+          mineBlockNumberHex,
+          "0x1e",
+        ]);
+        await spexBeneficiary._updateLenderOwedAmount(signers[10].address, 200);
+        let loan = await spexBeneficiary._loans(signers[10].address, 200);
+        console.log("loan: ", loan);
+
+        // let lastTimestamp = (await ethers.provider.getBlock()).timestamp;
+        // console.log("lastTimestamp: ", lastTimestamp);
+
         let result = spexBeneficiary
           .connect(signers[14])
           .buyLoan(signers[10].address, 200, ONE_ETHER * 2n, BigInt(95e16), {
@@ -918,7 +935,14 @@ describe("SPexBeneficiary", function () {
           });
         await expect(result)
           .to.emit(spexBeneficiary, "EventBuyLoan")
-          .withArgs(signers[14].address, signers[10].address, 200, ONE_ETHER * 2n, BigInt(95e16));
+          .withArgs(
+            signers[14].address,
+            signers[10].address,
+            200,
+            ONE_ETHER * 2n,
+            BigInt(95e16),
+            1773841048928474057n
+          );
       });
 
       it("Normal Test", async function () {
@@ -932,7 +956,7 @@ describe("SPexBeneficiary", function () {
           .buyLoan(signers[10].address, 200, ONE_ETHER * 2n, BigInt(95e16), {
             value: BigInt(19e17),
           });
-        
+
         let sellItem = await spexBeneficiary._sales(signers[10].address, 200);
         expect(sellItem.amountRemaining).to.equal(ONE_ETHER * 1n);
         expect(sellItem.pricePerFil).to.equal(BigInt(95e16));

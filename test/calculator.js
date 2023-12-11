@@ -20,6 +20,6 @@ function getInterest(principal, duration, annual) {
 // console.log(getPrincipalInterest(10e18, 1, 0.1))
 
 
-console.log(getInterest(10e18, (184923 + 43812) * 30 / 31536000, 0.1))
+console.log(getInterest(5e18, (31535973)/ 31536000, 0.12))
 
   

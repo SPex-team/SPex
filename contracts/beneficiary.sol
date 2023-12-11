@@ -22,7 +22,7 @@ import "./utils/FilAddress.sol";
 /// @author SPex Team
 contract SPexBeneficiary {
 
-    event EventPledgeBeneficiaryToSpex(CommonTypes.FilActorId, address, uint, uint, address);
+    event EventPledgeBeneficiaryToSpex(CommonTypes.FilActorId, address, uint, uint, address, uint8, uint);
     event EventReleaseBeneficiary(CommonTypes.FilActorId, CommonTypes.FilAddress);
     event EventLendToMiner(address, CommonTypes.FilActorId, uint);
     event EventChangeMinerDelegator(CommonTypes.FilActorId, address);
@@ -32,10 +32,10 @@ contract SPexBeneficiary {
     event EventChangeMinerReceiveAddress(CommonTypes.FilActorId, address);
     event EventChangeMinerMaxLenderCount(CommonTypes.FilActorId, uint);
     event EventChangeMinerMinLendAmount(CommonTypes.FilActorId, uint);
-    event EventRepayment(address, address, CommonTypes.FilActorId, uint);
-    event EventWithdrawRepayment(address, address, CommonTypes.FilActorId, uint);
+    event EventRepayment(address, address, CommonTypes.FilActorId, uint, uint);
+    event EventWithdrawRepayment(address, address, CommonTypes.FilActorId, uint, uint);
     event EventSellLoan(address, CommonTypes.FilActorId, uint, uint);
-    event EventBuyLoan(address, address, CommonTypes.FilActorId, uint, uint);
+    event EventBuyLoan(address, address, CommonTypes.FilActorId, uint, uint, uint);
     event EventCancelSellLoan(address, CommonTypes.FilActorId);
 
     struct Miner {
@@ -130,7 +130,7 @@ contract SPexBeneficiary {
         uint loanInterestRate, 
         address receiveAddress, 
         bool disabled,
-        uint maxLenderCount,
+        uint8 maxLenderCount,
         uint minLendAmount) external {
 
         _prePledgeBeneficiaryToSpex(minerId, sign, timestamp, maxDebtAmount, minLendAmount);
@@ -166,7 +166,7 @@ contract SPexBeneficiary {
             lenders: new address[](0)
         });
         _miners[minerId] = miner;
-        emit EventPledgeBeneficiaryToSpex(minerId, msg.sender, maxDebtAmount, loanInterestRate, receiveAddress);
+        emit EventPledgeBeneficiaryToSpex(minerId, msg.sender, maxDebtAmount, loanInterestRate, receiveAddress, maxLenderCount, minLendAmount);
     }
 
     function releaseBeneficiary(CommonTypes.FilActorId minerId) external onlyMinerDelegator(minerId) {
@@ -336,7 +336,7 @@ contract SPexBeneficiary {
         }
         
         payable(seller).transfer(requiredPayment);
-        emit EventBuyLoan(msg.sender, seller, minerId, buyAmount, sellItem.pricePerFil);
+        emit EventBuyLoan(msg.sender, seller, minerId, buyAmount, sellItem.pricePerFil, principalChange);
     }
 
     function withdrawRepayment(address payable lender, CommonTypes.FilActorId minerId, uint amount) public returns (uint actualRepaymentAmount) {
@@ -355,7 +355,7 @@ contract SPexBeneficiary {
 
         _transferRepayment(lender, actualRepaymentAmount, repaiedInterest);
 
-        emit EventWithdrawRepayment(msg.sender, lender, minerId, amount);
+        emit EventWithdrawRepayment(msg.sender, lender, minerId, actualRepaymentAmount, repaiedInterest);
     }
 
     function batchWithdrawRepayment(address[] memory lenderList, CommonTypes.FilActorId[] memory minerIdList, uint[] memory amountList) external returns (uint actuallRepaymentAmount) {
@@ -383,7 +383,7 @@ contract SPexBeneficiary {
         actualRepaymentAmount = _reduceOwedAmounts(lender, minerId, amount);
         uint repaiedInterest = actualRepaymentAmount >= owedInterest ? owedInterest : actualRepaymentAmount;
         _transferRepayment(lender, actualRepaymentAmount, repaiedInterest);
-        emit EventRepayment(msg.sender, lender, minerId, actualRepaymentAmount);
+        emit EventRepayment(msg.sender, lender, minerId, actualRepaymentAmount, repaiedInterest);
     }
 
     function directRepayment(address lender, CommonTypes.FilActorId minerId) external payable returns (uint actualRepaymentAmount) {
