@@ -78,12 +78,10 @@ contract SPexBeneficiary {
     uint constant public REQUIRED_QUOTA = 1e68 - 1e18;
     int64 constant public REQUIRED_EXPIRATION = type(int64).max;
 
-    constructor(address foundation, uint maxDebtRate, uint feeRate) {
-        require(foundation != address(0), "Foundation address cannot be zero address");
-        require(feeRate <= MAX_FEE_RATE, "Fee rate must less than or equal to MAX_FEE_RATE");
-        _foundation = foundation;
-        _maxDebtRate = maxDebtRate;
-        _feeRate = feeRate;
+    constructor() {
+        _foundation = msg.sender;
+        _maxDebtRate = 400000;
+        _feeRate = 100000;
     }
 
     function _validateTimestamp(uint timestamp) internal {
@@ -136,9 +134,8 @@ contract SPexBeneficiary {
         _prePledgeBeneficiaryToSpex(minerId, sign, timestamp, maxDebtAmount, minLendAmount);
 
         // MinerTypes.GetBeneficiaryReturn memory beneficiaryRet = MinerAPI.getBeneficiary(minerId);
-        // // new_quota check
 
-        // // uint quota = proposedBeneficiaryRet.new_quota.bigInt2Uint();
+        // // new_quota check
         // require(Common.bigInt2Uint(beneficiaryRet.proposed.new_quota) == REQUIRED_QUOTA, "Invalid quota");
         // int64 expiration = CommonTypes.ChainEpoch.unwrap(beneficiaryRet.proposed.new_expiration);
         // uint64 uExpiration = uint64(expiration);

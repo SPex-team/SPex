@@ -99,11 +99,7 @@ describe("SPexBeneficiary", function () {
       }
     );
     // const ERC20 = await hre.ethers.getContractFactory("FeedbackToken");
-    const spexBeneficiary = await SPexBeneficiary.deploy(
-      owner.address,
-      INIT_MAX_DEBT_RATE,
-      FEE_RATE
-    );
+    const spexBeneficiary = await SPexBeneficiary.deploy();
     return { spexBeneficiary, owner, otherAccount };
   }
 
@@ -119,7 +115,7 @@ describe("SPexBeneficiary", function () {
       const { spexBeneficiary, owner, otherAccount } = await loadFixture(
         deploySPexBeneficiary
       );
-      expect(await spexBeneficiary._maxDebtRate()).to.equal(INIT_MAX_DEBT_RATE);
+      expect(await spexBeneficiary._maxDebtRate()).to.equal(400000);
     });
   });
 
@@ -637,6 +633,32 @@ describe("SPexBeneficiary", function () {
           "Debt amount after lend large than allowed by miner"
         );
       });
+
+      it("Normal Test", async function () {
+        const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+          deploySPexBeneficiary
+        );
+        await pledgeSomeMiners(spexBeneficiary);
+        let signers = await ethers.getSigners();
+        await spexBeneficiary
+          .connect(signers[10])
+          .lendToMiner(200, 120000, { value: ONE_ETHER * 2n });
+
+        await spexBeneficiary
+        .connect(signers[10])
+        .lendToMiner(200, 120000, { value: ONE_ETHER * 3n });
+
+        await spexBeneficiary
+        .connect(signers[11])
+        .lendToMiner(200, 120000, { value: ONE_ETHER * 3n });
+
+        await spexBeneficiary
+        .connect(signers[11])
+        .lendToMiner(200, 120000, { value: ONE_ETHER * 5n });
+        let loan = await spexBeneficiary._loans(signers[10].address, 200)
+        await expect(loan.principalAmount).to.equal(5n * ONE_ETHER);
+      });
+
     });
 
     async function sellLoanPreSteps(spexBeneficiary) {
@@ -974,7 +996,182 @@ describe("SPexBeneficiary", function () {
       });
     });
 
-    // describe("directRepayment", async function () {
+    describe("getCurrentMinerOwedAmount", async function () {
+      it("Normal test", async function () {
+        const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+          deploySPexBeneficiary
+        );
+        let signers = await ethers.getSigners();
+        await pledgeSomeMiners(spexBeneficiary);
+        await spexBeneficiary
+        .connect(signers[10])
+        .lendToMiner(200, 120000, { value: ONE_ETHER * 5n });
+        await spexBeneficiary
+        .connect(signers[11])
+        .lendToMiner(200, 120000, { value: ONE_ETHER * 12n });
+        let res10 = await spexBeneficiary.getCurrentMinerOwedAmount(10)
+        expect(res10[0]).to.equal(0n)
+        expect(res10[1]).to.equal(0n)
+        let res200 = await spexBeneficiary.getCurrentMinerOwedAmount(200)
+        expect(res200[0]).to.equal(17n * ONE_ETHER + 19025875225n)
+        expect(res200[1]).to.equal(17n * ONE_ETHER)
+      });
+
+    //   it("xxxxxxxxxxx", async function () {
+    //     const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+    //       deploySPexBeneficiary
+    //     );
+    //     await pledgeSomeMiners(spexBeneficiary);
+    //     let signers = await ethers.getSigners();
+    //     let result = spexBeneficiary
+    //       .connect(signers[10])
+    //       .xxxxxxxxxx(10, 140000, { value: ONE_ETHER * 1n });
+    //     await expect(result).to.be.revertedWith("xxxxxxxxxx");
+    //   });
+    });
+
+    describe("getCurrentLenderOwedAmount", async function () {
+      it("Normal test", async function () {
+        const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+          deploySPexBeneficiary
+        );
+        await sellLoanPreSteps(spexBeneficiary)
+        let signers = await ethers.getSigners();
+        let res10 = await spexBeneficiary.getCurrentLenderOwedAmount(signers[10].address, 200)
+        expect(res10[0]).to.equal(5n * ONE_ETHER + 19025875225n)
+        expect(res10[1]).to.equal(5n * ONE_ETHER)
+      });
+      //   const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+      //     deploySPexBeneficiary
+      //   );
+      //   await pledgeSomeMiners(spexBeneficiary);
+      //   let signers = await ethers.getSigners();
+      //   let result = spexBeneficiary
+      //     .connect(signers[10])
+      //     .xxxxxxxxxx(10, 140000, { value: ONE_ETHER * 1n });
+      //   await expect(result).to.be.revertedWith("xxxxxxxxxx");
+      // });
+    });
+
+    describe("changeFoundation", async function () {
+      it("Only foundation allowed", async function () {
+        const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+          deploySPexBeneficiary
+        );
+        let signers = await ethers.getSigners();
+        let result = spexBeneficiary
+          .connect(signers[10])
+          .changeFoundation(signers[11].address);
+        await expect(result).to.be.revertedWith("Only foundation allowed");
+      });
+
+      it("Normal test", async function () {
+        const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+          deploySPexBeneficiary
+        );
+        await pledgeSomeMiners(spexBeneficiary);
+        let signers = await ethers.getSigners();
+        await spexBeneficiary
+          .changeFoundation(signers[11].address);
+        let result = await spexBeneficiary
+        ._foundation()
+        expect(result).to.equal(signers[11].address);
+      });
+    });
+
+    describe("changeMaxDebtRate", async function () {
+      it("Only foundation allowed", async function () {
+        const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+          deploySPexBeneficiary
+        );
+        let signers = await ethers.getSigners();
+        let result = spexBeneficiary
+          .connect(signers[10])
+          .changeMaxDebtRate(300000);
+        await expect(result).to.be.revertedWith("Only foundation allowed");
+      });
+
+      it("Normal test", async function () {
+        const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+          deploySPexBeneficiary
+        );
+        await pledgeSomeMiners(spexBeneficiary);
+        let signers = await ethers.getSigners();
+        await spexBeneficiary.changeMaxDebtRate(300000);
+        let result = await spexBeneficiary
+        ._maxDebtRate()
+        expect(result).to.equal(300000);
+      });
+    });
+
+    describe("changeFeeRate", async function () {
+      it("Only foundation allowed", async function () {
+        const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+          deploySPexBeneficiary
+        );
+        let signers = await ethers.getSigners();
+        let result = spexBeneficiary
+          .connect(signers[10])
+          .changeFeeRate(150000);
+        await expect(result).to.be.revertedWith("Only foundation allowed");
+      });
+
+      it("Fee rate must less than or equal to MAX_FEE_RATE", async function () {
+        const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+          deploySPexBeneficiary
+        );
+        await pledgeSomeMiners(spexBeneficiary);
+        let signers = await ethers.getSigners();
+        let result = spexBeneficiary.changeFeeRate(700000);
+        await expect(result).to.be.revertedWith("Fee rate must less than or equal to MAX_FEE_RATE");
+      });
+
+      it("Normal test", async function () {
+        const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+          deploySPexBeneficiary
+        );
+        let signers = await ethers.getSigners();
+        await spexBeneficiary.changeFeeRate(150000);
+        let result = await spexBeneficiary._feeRate()
+        expect(result).to.equal(150000);
+      });
+    });
+
+    describe("withdraw", async function () {
+      it("Only foundation allowed", async function () {
+        const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+          deploySPexBeneficiary
+        );
+        let signers = await ethers.getSigners();
+        let result = spexBeneficiary
+          .connect(signers[10])
+          .withdraw(signers[15].address, 1234567890n);
+        await expect(result).to.be.revertedWith("Only foundation allowed");
+      });
+
+      it("Normal test", async function () {
+        const { spexBeneficiary, owner, otherAccount } = await loadFixture(
+          deploySPexBeneficiary
+        );
+        let signers = await ethers.getSigners();
+        await sellLoanPreSteps(spexBeneficiary)
+        let mineBlockNumberHex = `0x${(1051200).toString(16)}`;
+        await hre.network.provider.send("hardhat_mine", [
+          mineBlockNumberHex,
+          "0x1e",
+        ]);
+        await spexBeneficiary.directRepayment(signers[10].address, 200, {
+          value: 11n * ONE_ETHER,
+        });
+        let balanceBefore = await ethers.provider.getBalance(signers[15].address);
+        console.log("typeof balanceBefore: ", typeof balanceBefore)
+        await spexBeneficiary.withdraw(signers[15].address, 1234567890n);
+        let balanceAfter = await ethers.provider.getBalance(signers[15].address);
+        await expect(balanceAfter).to.equal(balanceBefore + 1234567890n);
+      });
+    });
+
+    // describe("xxxxxx", async function () {
     //   it("xxxxxxxxxxx", async function () {
     //     const { spexBeneficiary, owner, otherAccount } = await loadFixture(
     //       deploySPexBeneficiary
@@ -1000,33 +1197,7 @@ describe("SPexBeneficiary", function () {
     //   });
     // });
 
-    // describe("xxxxxxx", async function () {
-    //   it("xxxxxxxxxxx", async function () {
-    //     const { spexBeneficiary, owner, otherAccount } = await loadFixture(
-    //       deploySPexBeneficiary
-    //     );
-    //     await pledgeSomeMiners(spexBeneficiary);
-    //     let signers = await ethers.getSigners();
-    //     let result = spexBeneficiary
-    //       .connect(signers[10])
-    //       .xxxxxxxxxx(10, 140000, { value: ONE_ETHER * 1n });
-    //     await expect(result).to.be.revertedWith("xxxxxxxxxx");
-    //   });
-
-    //   it("xxxxxxxxxxx", async function () {
-    //     const { spexBeneficiary, owner, otherAccount } = await loadFixture(
-    //       deploySPexBeneficiary
-    //     );
-    //     await pledgeSomeMiners(spexBeneficiary);
-    //     let signers = await ethers.getSigners();
-    //     let result = spexBeneficiary
-    //       .connect(signers[10])
-    //       .xxxxxxxxxx(10, 140000, { value: ONE_ETHER * 1n });
-    //     await expect(result).to.be.revertedWith("xxxxxxxxxx");
-    //   });
-    // });
-
-    // describe("xxxxxxx", async function () {
+    // describe("xxxxxx", async function () {
     //   it("xxxxxxxxxxx", async function () {
     //     const { spexBeneficiary, owner, otherAccount } = await loadFixture(
     //       deploySPexBeneficiary
