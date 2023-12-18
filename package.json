@@ -9,6 +9,7 @@
     "@nomicfoundation/hardhat-network-helpers": "^1.0.0",
     "@nomicfoundation/hardhat-toolbox": "^3.0.0",
     "@nomicfoundation/hardhat-verify": "^1.0.0",
+    "@openzeppelin/hardhat-upgrades": "^3.0.0",
     "@typechain/ethers-v6": "^0.4.0",
     "@typechain/hardhat": "^8.0.0",
     "chai": "^4.2.0",
@@ -19,6 +20,8 @@
     "typechain": "^8.1.0"
   },
   "dependencies": {
+    "@openzeppelin/contracts": "^5.0.1",
+    "@openzeppelin/contracts-upgradeable": "^5.0.1",
     "@openzeppelin/test-helpers": "^0.5.16",
     "@prb/math": "^4.0.1",
     "@zondax/filecoin-solidity": "^4.0.3",
