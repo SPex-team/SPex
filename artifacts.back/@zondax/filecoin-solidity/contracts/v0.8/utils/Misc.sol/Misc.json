@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "Misc",
+  "sourceName": "@zondax/filecoin-solidity/contracts/v0.8/utils/Misc.sol",
+  "abi": [],
+  "bytecode": "0x60808060405234601757603a9081601d823930815050f35b600080fdfe600080fdfea264697066735822122086830b756d5e7fb79d514d5942a970e6f8425523417279305e4030bafcf4e5dd64736f6c63430008140033",
+  "deployedBytecode": "0x600080fdfea264697066735822122086830b756d5e7fb79d514d5942a970e6f8425523417279305e4030bafcf4e5dd64736f6c63430008140033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
