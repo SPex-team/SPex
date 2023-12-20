@@ -14,18 +14,26 @@ import "@zondax/filecoin-solidity/contracts/v0.8/types/CommonTypes.sol";
 
 // import "fevmate/contracts/utils/FilAddress.sol";
 
+import "./LoanOwner.sol";
+import "./LoanBeneficiary.sol";
+import "./LoanGovernanceToken.sol";
 import "./utils/Common.sol";
 import "./utils/Validator.sol";
 import "./utils/FilAddress.sol";
 
 
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
+
 /// @author SPex Team
-contract SPexBeneficiary is Initializable {
+contract Loan is Initializable, OwnableUpgradeable{
+
+    uint8 constant public VERSION = 1;
 
     uint constant public REQUIRED_QUOTA = 1e68 - 1e18;
     int64 constant public REQUIRED_EXPIRATION = type(int64).max;
+    LoanGovernanceToken public _governanace_token;
 
 
     struct Loan {
@@ -44,6 +52,10 @@ contract SPexBeneficiary is Initializable {
         uint interestRate;
         uint minLoanTime;
         uint maxLoanTime;
+    }
+
+    function initialize(address governanace_token) public initializer {
+        _governanace_token = LoanGovernanceToken(governanace_token);
     }
 
     function pledgeBeneficiary(CommonTypes.FilActorId minerId) external {
@@ -86,4 +98,5 @@ contract SPexBeneficiary is Initializable {
             })
         );
     }
+
 }
