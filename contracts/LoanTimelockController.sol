@@ -18,8 +18,14 @@ import "./utils/Common.sol";
 import "./utils/Validator.sol";
 import "./utils/FilAddress.sol";
 
+import "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";
 
 /// @author SPex Team
-contract Timelock {
-
+contract Timelock is TimelockController {
+    constructor(
+        uint256 minDelay,
+        address[] memory proposers,
+        address[] memory executors,
+        address admin
+    ) TimelockController(minDelay, proposers, executors, admin) {}
 }
