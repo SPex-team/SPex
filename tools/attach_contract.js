@@ -9,3 +9,5 @@ contractAddress = "0x50Ff5585CC8e4D0117163F0da193cA81038E21Cc"
 contract = await ethers.getContractAt(abi, contractAddress)
 
 r = await contract.pledgeBeneficiaryToSpex(28435,"0x",0,30000000000000000000n,12,"0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199",false,0,0)
+
+r = await contract 

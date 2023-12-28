@@ -12,11 +12,10 @@ import "@zondax/filecoin-solidity/contracts/v0.8/utils/FilAddresses.sol";
 
 import "@zondax/filecoin-solidity/contracts/v0.8/types/CommonTypes.sol";
 
-// import "fevmate/contracts/utils/FilAddress.sol";
+import "fevmate/contracts/utils/FilAddress.sol";
 
 import "./utils/Common.sol";
 import "./utils/Validator.sol";
-import "./utils/FilAddress.sol";
 
 
 /// @author SPex Team
@@ -65,7 +64,6 @@ contract SPexBeneficiary {
     mapping(CommonTypes.FilActorId => Miner) public _miners;
     mapping(address => mapping(CommonTypes.FilActorId => Loan)) public  _loans;
     mapping(address => mapping(CommonTypes.FilActorId => SellItem)) public _sales;
-    // mapping(CommonTypes.FilActorId => mapping(address => uint));
     mapping(address => uint) public _lastTimestampMap;
 
     address public _foundation;
@@ -105,17 +103,17 @@ contract SPexBeneficiary {
         require(_miners[minerId].delegator == address(0), "The miner is already in SPex");
         require(maxDebtAmount >= minLendAmount, "maxDebtAmount amount smaller than minLendAmount");
 
-        // uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_miners[minerId].minerId);
+        uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_miners[minerId].minerId);
 
-        // require(minerIdUint64 == 0,  "Beneficiary already pledged to SPex loan");
+        require(minerIdUint64 == 0,  "Beneficiary already pledged to SPex loan");
 
-        // MinerTypes.GetOwnerReturn memory ownerReturn = MinerAPI.getOwner(minerId);
-        // uint64 ownerUint64 = PrecompilesAPI.resolveAddress(ownerReturn.owner);
-        // uint64 senderUint64 = PrecompilesAPI.resolveEthAddress(msg.sender);
-        // if (senderUint64 != ownerUint64) {
-        //     _validateTimestamp(timestamp);
-        //     Validator.validateOwnerSignForBeneficiary(sign, minerId, ownerUint64, timestamp);
-        // }
+        MinerTypes.GetOwnerReturn memory ownerReturn = MinerAPI.getOwner(minerId);
+        uint64 ownerUint64 = PrecompilesAPI.resolveAddress(ownerReturn.owner);
+        uint64 senderUint64 = PrecompilesAPI.resolveEthAddress(msg.sender);
+        if (senderUint64 != ownerUint64) {
+            _validateTimestamp(timestamp);
+            Validator.validateOwnerSignForBeneficiary(sign, minerId, ownerUint64, timestamp);
+        }
 
         _checkMaxDebtAmount(minerId, maxDebtAmount);
     }
@@ -133,22 +131,22 @@ contract SPexBeneficiary {
 
         _prePledgeBeneficiaryToSpex(minerId, sign, timestamp, maxDebtAmount, minLendAmount);
 
-        // MinerTypes.GetBeneficiaryReturn memory beneficiaryRet = MinerAPI.getBeneficiary(minerId);
+        MinerTypes.GetBeneficiaryReturn memory beneficiaryRet = MinerAPI.getBeneficiary(minerId);
 
-        // // new_quota check
-        // require(Common.bigInt2Uint(beneficiaryRet.proposed.new_quota) == REQUIRED_QUOTA, "Invalid quota");
-        // int64 expiration = CommonTypes.ChainEpoch.unwrap(beneficiaryRet.proposed.new_expiration);
-        // uint64 uExpiration = uint64(expiration);
-        // require(expiration == REQUIRED_EXPIRATION && uExpiration > block.number, "Invalid expiration time");
-        // require(uint(keccak256(abi.encode(MinerAPI.getOwner(minerId).owner.data))) == 
-        // uint(keccak256(abi.encode(beneficiaryRet.active.beneficiary.data))), "Beneficiary is not owner");
+        // new_quota check
+        require(Common.bigInt2Uint(beneficiaryRet.proposed.new_quota) == REQUIRED_QUOTA, "Invalid quota");
+        int64 expiration = CommonTypes.ChainEpoch.unwrap(beneficiaryRet.proposed.new_expiration);
+        uint64 uExpiration = uint64(expiration);
+        require(expiration == REQUIRED_EXPIRATION && uExpiration > block.number, "Invalid expiration time");
+        require(uint(keccak256(abi.encode(MinerAPI.getOwner(minerId).owner.data))) == 
+        uint(keccak256(abi.encode(beneficiaryRet.active.beneficiary.data))), "Beneficiary is not owner");
 
-        // // change beneficiary to contract
-        // MinerAPI.changeBeneficiary(minerId, MinerTypes.ChangeBeneficiaryParams({
-        //     new_beneficiary: beneficiaryRet.proposed.new_beneficiary,
-        //     new_quota: beneficiaryRet.proposed.new_quota,
-        //     new_expiration: beneficiaryRet.proposed.new_expiration
-        // }));
+        // change beneficiary to contract
+        MinerAPI.changeBeneficiary(minerId, MinerTypes.ChangeBeneficiaryParams({
+            new_beneficiary: beneficiaryRet.proposed.new_beneficiary,
+            new_quota: beneficiaryRet.proposed.new_quota,
+            new_expiration: beneficiaryRet.proposed.new_expiration
+        }));
         
         Miner memory miner = Miner ({
             minerId: minerId,
