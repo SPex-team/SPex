@@ -4,7 +4,7 @@ require("@nomicfoundation/hardhat-toolbox");
 module.exports = {
   // solidity: "0.8.19",
   solidity: {
-    version: "0.8.19",
+    version: "0.8.20",
     // settings: {
     //   optimizer: {
     //     enabled: true,
@@ -44,6 +44,7 @@ module.exports = {
       chainId: 314159,
       url: "https://filecoin-calibration.chainup.net/rpc/v1",
       accounts: [
+        "e986ce96ee893e327d8ee8a921af5a4e2ddf47935af510cf13fa63b466fc5ccc"
       ],
     },
     local_net: {
@@ -53,12 +54,12 @@ module.exports = {
       ],
     },
     hardhat: {
-      // accounts: [
-      //   {
-      //     privateKey: "ec30c33546ddf1ce381e7a9be187bad34659048c182f1bd756e21d4733bd5998",
-      //     balance: "99999900000000000000000000000000"
-      //   }
-      // ]
+      accounts: [
+        {
+          privateKey: "ec30c33546ddf1ce381e7a9be187bad34659048c182f1bd756e21d4733bd5998",
+          balance: "99999900000000000000000000000000"
+        }
+      ]
     },
   },
   mocha: {

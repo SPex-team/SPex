@@ -58,9 +58,9 @@ describe("Contracts", function () {
       }
     );
     const spexBeneficiary = await SPexBeneficiary.deploy(
-      owner.address,
-      600000,
-      100000,
+      // owner.address,
+      // 600000,
+      // 100000,
     );
 
     return { spexBeneficiary };
