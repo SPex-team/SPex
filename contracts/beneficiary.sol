@@ -169,18 +169,18 @@ contract SPexBeneficiary {
         require(minerIdUint64 != 0,  "Beneficiary of miner is not pledged to SPex");
         require(_updateMinerDebtAmounts(minerId) == 0 , "Debt not fully paid off");
         
-        // CommonTypes.FilAddress memory minerOwner = MinerAPI.getOwner(minerId).owner;        
-        // MinerAPI.changeBeneficiary(
-        //     minerId,
-        //     MinerTypes.ChangeBeneficiaryParams({
-        //         new_beneficiary: minerOwner,
-        //         new_quota: CommonTypes.BigInt(hex"00", false),
-        //         new_expiration: CommonTypes.ChainEpoch.wrap(0)
-        //     })
-        // );
+        CommonTypes.FilAddress memory minerOwner = MinerAPI.getOwner(minerId).owner;        
+        MinerAPI.changeBeneficiary(
+            minerId,
+            MinerTypes.ChangeBeneficiaryParams({
+                new_beneficiary: minerOwner,
+                new_quota: CommonTypes.BigInt(hex"00", false),
+                new_expiration: CommonTypes.ChainEpoch.wrap(0)
+            })
+        );
 
         delete _miners[minerId];
-        // emit EventReleaseBeneficiary(minerId, minerOwner);
+        emit EventReleaseBeneficiary(minerId, minerOwner);
     }
 
     function changeMinerDelegator(CommonTypes.FilActorId minerId, address newDelegator) public onlyMinerDelegator(minerId) {
