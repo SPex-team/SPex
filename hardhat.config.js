@@ -4,7 +4,7 @@ require("@nomicfoundation/hardhat-toolbox");
 module.exports = {
   // solidity: "0.8.19",
   solidity: {
-    version: "0.8.20",
+    version: "0.8.19",
     // settings: {
     //   optimizer: {
     //     enabled: true,
@@ -13,13 +13,14 @@ module.exports = {
     // },
     settings: {
       viaIR: true,
-      optimizer: { enabled: true, runs: 10 },
+      optimizer: { enabled: true, runs: 200 },
     },
   },
   networks: {
     goerli: {
       url: "https://goerli.infura.io/v3/0b3989b7816f4feeae0d0cc02e3b78dd",
       accounts: [
+        "e986ce96ee893e327d8ee8a921af5a4e2ddf47935af510cf13fa63b466fc5ccc"
       ],
     },
     wallaby: {
@@ -42,7 +43,7 @@ module.exports = {
     },
     calibration: {
       chainId: 314159,
-      url: "https://filecoin-calibration.chainup.net/rpc/v1",
+      url: "https://api.calibration.node.glif.io/rpc/v1",
       accounts: [
         "e986ce96ee893e327d8ee8a921af5a4e2ddf47935af510cf13fa63b466fc5ccc"
       ],
