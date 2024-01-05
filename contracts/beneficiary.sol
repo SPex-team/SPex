@@ -108,8 +108,8 @@ contract SPexBeneficiary {
     }
 
     function _prePledgeBeneficiaryToSpex(CommonTypes.FilActorId minerId, bytes memory sign, uint timestamp, uint maxDebtAmount, uint minLendAmount) internal {
-        // uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_miners[minerId].minerId);
-        // require(minerIdUint64 == 0,  "Beneficiary already pledged to SPex loan");
+        uint64 minerIdUint64 = CommonTypes.FilActorId.unwrap(_miners[minerId].minerId);
+        require(minerIdUint64 == 0,  "The miner is already in SPex");
         require(maxDebtAmount >= minLendAmount, "maxDebtAmount amount smaller than minLendAmount");
 
         // MinerTypes.GetOwnerReturn memory ownerReturn = MinerAPI.getOwner(minerId);

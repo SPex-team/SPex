@@ -700,23 +700,6 @@ describe("SPexBeneficiary", function () {
         await expect(result).to.be.revertedWith("Sale already exists");
       });
 
-      it("ceilingAmount less than minLendAmount", async function () {
-        const { spexBeneficiary, owner, otherAccount } = await loadFixture(
-          deploySPexBeneficiary
-        );
-        await pledgeSomeMiners(spexBeneficiary);
-        let signers = await ethers.getSigners();
-        await spexBeneficiary
-          .connect(signers[10])
-          .lendToMiner(200, 120000, { value: ONE_ETHER * 5n });
-        let result = spexBeneficiary
-          .connect(signers[10])
-          .sellLoan(200, ONE_ETHER * 1n, BigInt(95e16));
-        await expect(result).to.be.revertedWith(
-          "ceilingAmount less than minLendAmount"
-        );
-      });
-
       it("EventSellLoan", async function () {
         const { spexBeneficiary, owner, otherAccount } = await loadFixture(
           deploySPexBeneficiary
@@ -815,7 +798,7 @@ describe("SPexBeneficiary", function () {
     });
 
     describe("buyLoan", async function () {
-      it("buyAmount less than minLendAmount", async function () {
+      it("buyAmount too small", async function () {
         const { spexBeneficiary, owner, otherAccount } = await loadFixture(
           deploySPexBeneficiary
         );
@@ -824,10 +807,10 @@ describe("SPexBeneficiary", function () {
         let result = spexBeneficiary
           .connect(signers[15])
           .buyLoan(signers[10].address, 200, ONE_ETHER * 1n, BigInt(95e16), {
-            value: ONE_ETHER * 1n,
+            value: BigInt(95e16),
           });
         await expect(result).to.be.revertedWith(
-          "buyAmount less than minLendAmount"
+          "buyAmount too small"
         );
       });
 
@@ -993,6 +976,12 @@ describe("SPexBeneficiary", function () {
 
         let miner = await spexBeneficiary.getMiner(200);
         expect(miner.lenders.length).to.equal(2);
+
+        await spexBeneficiary
+          .connect(signers[15])
+          .buyLoan(signers[10].address, 200, 10000n, BigInt(95e16), {
+            value: BigInt(9500n),
+          });
       });
     });
 
