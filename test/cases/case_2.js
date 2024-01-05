@@ -82,7 +82,7 @@ const CASE = {
       increaseBlockNumber: 43231,
       contractName: "spexBeneficiary",
       functionName: "buyLoan",
-      params: ["__signer4", 10323231, 6n * ONE_ETHER],
+      params: ["__signer4", 10323231, 6n * ONE_ETHER, BigInt(9e17)],
       value: 5400000000000000000n,
       signerIndex: 20,
     },

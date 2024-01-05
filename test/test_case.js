@@ -1,8 +1,6 @@
 const hre = require("hardhat");
 const { ethers } = require("hardhat");
 
-const { utils } = require("ethers")
-
 const {
   time,
   loadFixture,
@@ -17,12 +15,12 @@ const {
   expectEvent, // Assertions for emitted events
   expectRevert, // Assertions for transactions that should fail
 } = require("@openzeppelin/test-helpers");
-const { Contract, ZERO_ADDRESS } = require("ethers");
+const { Contract, utils, ZERO_ADDRESS } = require("ethers");
 const { assert } = require("console");
 const { transaction } = require("@openzeppelin/test-helpers/src/send");
 const { duration } = require("@openzeppelin/test-helpers/src/time");
 
-const case_1 = require("./cases/case_3");
+const case_1 = require("./cases/case_4");
 
 const ONE_ETHER = BigInt(1e18);
 
@@ -59,12 +57,8 @@ describe("Contracts", function () {
         },
       }
     );
-    const spexBeneficiary = await SPexBeneficiary
-      .deploy
-      // owner.address,
-      // 600000,
-      // 100000,
-      ();
+    const spexBeneficiary = await SPexBeneficiary.deploy(
+    );
 
     return { spexBeneficiary };
   }
@@ -229,13 +223,13 @@ describe("Contracts", function () {
       lastTimestamp = (await ethers.provider.getBlock()).timestamp;
       console.log("lastTimestamp3: ", lastTimestamp);
 
-      //   let loan = await contracts["spexBeneficiary"]._loans(signers[1].address, 10323231);
-      //   console.log(
-      //     "signer address: ",
-      //     signer.address,
-      //     "loan: ",
-      //     loan
-      //   );
+    //   let loan = await contracts["spexBeneficiary"]._loans(signers[1].address, 10323231);
+    //   console.log(
+    //     "signer address: ",
+    //     signer.address,
+    //     "loan: ",
+    //     loan
+    //   );
 
       for (stepIndex in stepList) {
         step = stepList[stepIndex];
@@ -261,23 +255,10 @@ describe("Contracts", function () {
         let signer = signers[step.signerIndex];
         let newParams = getProcessedParams(step.params, signers);
 
-        console.log("test.value: ", 10000234n);
-        console.log("step.value: ", step.value);
-        console.log("ethers.BigNumber", ethers.BigNumber)
-        let result = null;
-        if (step.functionName == "buyLoan") {
-          console.log("1111")
-          let tx = await contract
-            .connect(signer)
-            [step.functionName](...newParams, { value: 300000000000000001 });
-          result = await tx.wait();
-        } else {
-          console.log("2222")
-          let tx = await contract
-            .connect(signer)
-            [step.functionName](...newParams, { value: step.value });
-          result = await tx.wait();
-        }
+        let tx = await contract
+          .connect(signer)
+          [step.functionName](...newParams, { value: step.value });
+        let result = await tx.wait();
 
         // await contract._updateLenderOwedAmount(signer.address, 10323231);
         // let miner = await contract._miners(10323231);
@@ -311,18 +292,21 @@ describe("Contracts", function () {
         await signers[0].sendTransaction(sendTransaction);
 
         try {
-          // let loan3 = await contracts["spexBeneficiary"]._loans(signers[3].address, 10323231)
-          // let loan4 = await contracts["spexBeneficiary"]._loans(signers[4].address, 10323231)
+            // let loan3 = await contracts["spexBeneficiary"]._loans(signers[3].address, 10323231)
+            // let loan4 = await contracts["spexBeneficiary"]._loans(signers[4].address, 10323231)
 
-          // let miner = await contract._miners(10323231);
-          // console.log("miner: ", miner);
+            // let miner = await contract._miners(10323231);
+            // console.log("miner: ", miner);
 
-          // console.log("loan3: ", loan3)
-          // console.log("loan4: ", loan4)
+            // console.log("loan3: ", loan3)
+            // console.log("loan4: ", loan4)
 
-          console.log("result.logs: ", result.logs);
-          let balance = await ethers.provider.getBalance(signers[3].address);
-          console.log("balance: ", balance);
+            console.log("result.logs: ", result.logs)
+            let balance = await ethers.provider.getBalance(signers[3].address);
+            console.log("balance: ", balance)
+
+
+
         } catch (error) {}
       }
 
@@ -355,13 +339,8 @@ describe("Contracts", function () {
       let finalBalanceCheckList = case_1.CASE.finalBalanceCheckList;
 
       for (let index in finalBalanceCheckList) {
-        let accountInfo = finalBalanceCheckList[index];
-        console.log(
-          "check account balance, index:",
-          index,
-          "accountInfo: ",
-          accountInfo
-        );
+        let accountInfo = finalBalanceCheckList[index]
+        console.log("check account balance, index:", index, "accountInfo: ", accountInfo);
         let address = "";
         if (accountInfo.accountType == "contract") {
           address = contracts[accountInfo.contractName].target;
@@ -373,20 +352,17 @@ describe("Contracts", function () {
 
         let balance = await ethers.provider.getBalance(address);
 
-        if (
-          accountInfo.tolaranceRange !== undefined &&
-          accountInfo.tolaranceRange != null
-        ) {
-          let diff = balance - accountInfo.expectBalance;
-          diff = Number(diff);
-          balance = Number(balance);
-          expectBalance = Number(accountInfo.expectBalance);
-          let tolaranceRange =
-            Math.abs(diff) / Math.min(balance, expectBalance);
-          if (tolaranceRange > accountInfo.tolaranceRange) {
-            throw `balance is not equal accountInfo.contractName: ${accountInfo.contractName} accountInfo.accountIndex: ${accountInfo.accountIndex} chain balance: ${balance} expect balance: ${accountInfo.expectBalance} Actual tolaranceRange: ${tolaranceRange}`;
-          }
-        } else if (balance != accountInfo.expectBalance) {
+        if (accountInfo.tolaranceRange !== undefined && accountInfo.tolaranceRange != null) {
+            let diff = balance - accountInfo.expectBalance
+            diff = Number(diff)
+            balance = Number(balance)
+            expectBalance = Number(accountInfo.expectBalance)
+            let tolaranceRange = Math.abs(diff) / Math.min(balance, expectBalance)
+            if (tolaranceRange > accountInfo.tolaranceRange) {
+                throw `balance is not equal accountInfo.contractName: ${accountInfo.contractName} accountInfo.accountIndex: ${accountInfo.accountIndex} chain balance: ${balance} expect balance: ${accountInfo.expectBalance} Actual tolaranceRange: ${tolaranceRange}`;     
+            }
+        }
+        else if (balance != accountInfo.expectBalance) {
           throw `balance is not equal accountInfo.contractName: ${accountInfo.contractName} accountInfo.accountIndex: ${accountInfo.accountIndex} chain balance: ${balance} expect balance: ${accountInfo.expectBalance}`;
         }
 
