@@ -82,9 +82,9 @@ contract SPexBeneficiary {
     uint constant public REQUIRED_QUOTA = 1e68 - 1e18;
     int64 constant public REQUIRED_EXPIRATION = type(int64).max;
 
-    constructor() {
-        _foundation = msg.sender;
-        _maxDebtRate = 400000;
+    constructor(address foundation) {
+        _foundation = foundation;
+        _maxDebtRate = 600000;
         _feeRate = 100000;
     }
 
